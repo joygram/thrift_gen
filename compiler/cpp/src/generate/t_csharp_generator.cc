@@ -198,7 +198,7 @@ public:
   std::string function_signature(t_function* tfunction, std::string prefix = "");
   std::string argument_list(t_struct* tstruct);
   std::string type_to_enum(t_type* ttype);
-  std::string prop_name(t_field* tfield, bool suppress_mapping = false);
+  std::string prop_name(t_field* tfield, bool suppress_mapping = true); // default false to true by joygram 
   std::string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
@@ -2136,7 +2136,7 @@ void t_csharp_generator::generate_deserialize_field(ofstream& out,
     throw "CANNOT GENERATE DESERIALIZE CODE FOR void TYPE: " + prefix + tfield->get_name();
   }
 
-  string name = prefix + (is_propertyless ? "" : prop_name(tfield));
+  string name = prefix + (is_propertyless ? "" : prop_name(tfield, !is_propertyless)); // prop name second param by joygram 
 
   if (type->is_struct() || type->is_xception()) {
     generate_deserialize_struct(out, (t_struct*)type, name);
@@ -2312,7 +2312,7 @@ void t_csharp_generator::generate_serialize_field(ofstream& out,
     type = ((t_typedef*)type)->get_type();
   }
 
-  string name = prefix + (is_propertyless ? "" : prop_name(tfield));
+  string name = prefix + (is_propertyless ? "" : prop_name(tfield, !is_propertyless)); // prob_name second param by joygram 
 
   if (type->is_void()) {
     throw "CANNOT GENERATE SERIALIZE CODE FOR void TYPE: " + name;
