@@ -1,5 +1,0 @@
-X:\GEN\third_party\build_package\thrift-0.9.3_gen\lib\csharp\src\bin\Release\Thrift.dll
-X:\GEN\third_party\build_package\thrift-0.9.3_gen\lib\csharp\src\bin\Release\Thrift.pdb
-X:\GEN\third_party\build_package\thrift-0.9.3_gen\lib\csharp\src\obj\Release\Thrift.csprojResolveAssemblyReference.cache
-X:\GEN\third_party\build_package\thrift-0.9.3_gen\lib\csharp\src\obj\Release\Thrift.dll
-X:\GEN\third_party\build_package\thrift-0.9.3_gen\lib\csharp\src\obj\Release\Thrift.pdb
