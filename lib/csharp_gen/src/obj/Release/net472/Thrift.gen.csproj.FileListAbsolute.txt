@@ -1,0 +1,7 @@
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\net472\Thrift.dll
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\net472\Thrift.pdb
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\net472\Thrift.gen.GeneratedMSBuildEditorConfig.editorconfig
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\net472\Thrift.gen.csproj.CoreCompileInputs.cache
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\net472\Thrift.dll
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\net472\Thrift.pdb
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\net472\Thrift.gen.csproj.AssemblyReference.cache

@@ -20,8 +20,8 @@
 #ifndef _THRIFT_TRANSPORT_TSERVERWINPIPES_H_
 #define _THRIFT_TRANSPORT_TSERVERWINPIPES_H_ 1
 
+#include <memory>
 #include <thrift/transport/TServerTransport.h>
-#include <boost/shared_ptr.hpp>
 #ifndef _WIN32
 #include <thrift/transport/TServerSocket.h>
 #endif
@@ -60,9 +60,9 @@ public:
   virtual ~TPipeServer();
 
   // Standard transport callbacks
-  virtual void interrupt();
-  virtual void close();
-  virtual void listen();
+  void interrupt() override;
+  void close() override;
+  void listen() override;
 
   // Accessors
   std::string getPipename();
@@ -82,10 +82,10 @@ public:
   HANDLE getNativeWaitHandle();
 
 protected:
-  virtual boost::shared_ptr<TTransport> acceptImpl();
+  virtual std::shared_ptr<TTransport> acceptImpl();
 
 private:
-  boost::shared_ptr<TPipeServerImpl> impl_;
+  std::shared_ptr<TPipeServerImpl> impl_;
 
   std::string pipename_;
   uint32_t bufsize_;

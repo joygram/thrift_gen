@@ -17,32 +17,78 @@
 # under the License.
 #
 
-if(IS_ABSOLUTE "${LIB_INSTALL_DIR}")
-    set(JAVA_INSTALL_DIR "${LIB_INSTALL_DIR}/java")
+if(ANDROID)
+
+    set(THRIFT_AAR outputs/aar/thrift-debug.aar outputs/aar/thrift-release.aar)
+    add_custom_command(
+        OUTPUT ${THRIFT_AAR}
+        COMMAND ${GRADLE_EXECUTABLE}
+            -p "${CMAKE_CURRENT_SOURCE_DIR}/android"
+            "-PbuildDir=${CMAKE_CURRENT_BINARY_DIR}/android/build" assemble
+    )
+    add_custom_target(thrift_aar ALL DEPENDS ${THRIFT_AAR})
+
 else()
-    set(JAVA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/java")
-endif()
 
-if(IS_ABSOLUTE "${DOC_INSTALL_DIR}")
-    set(JAVA_DOC_INSTALL_DIR "${DOC_INSTALL_DIR}/java")
-else()
-    set(JAVA_DOC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${DOC_INSTALL_DIR}/java")
-endif()
+    if(IS_ABSOLUTE "${LIB_INSTALL_DIR}")
+        set(JAVA_INSTALL_DIR "${LIB_INSTALL_DIR}/java")
+    else()
+        set(JAVA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/java")
+    endif()
 
-add_custom_target(ant_build ALL
-    COMMAND ${Ant_EXECUTABLE} ${ANT_FLAGS} -Dbuild.dir=${CMAKE_CURRENT_BINARY_DIR} -Dworking.dir=${work_dir} -f build.xml
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Building Java library using Ant"
-)
+    if(IS_ABSOLUTE "${DOC_INSTALL_DIR}")
+        set(JAVA_DOC_INSTALL_DIR "${DOC_INSTALL_DIR}/java")
+    else()
+        set(JAVA_DOC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${DOC_INSTALL_DIR}/java")
+    endif()
 
-# Hook the ant install task into CMake install
-install(CODE "execute_process(
-    COMMAND ${Ant_EXECUTABLE} ${ANT_FLAGS} install
-    -Dbuild.dir=${CMAKE_CURRENT_BINARY_DIR} -Dworking.dir=${work_dir}
-    -Dinstall.path=${JAVA_INSTALL_DIR} -Dinstall.javadoc.path=${JAVA_DOC_INSTALL_DIR} -f build.xml
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)")
+    set(PRELEASE "true")
+    if (CMAKE_BUILD_TYPE MATCHES DEBUG)
+        set(PRELEASE "false")
+    endif ()
 
-if(BUILD_TESTING)
-    #add_subdirectory(test)
+    add_custom_target(ThriftJava ALL
+        COMMENT "Building Java library using Gradle Wrapper"
+        COMMAND ${GRADLEW_EXECUTABLE} ${GRADLE_OPTS} assemble
+            --console=plain --no-daemon
+            -Prelease=${PRELEASE}
+            -Pthrift.version=${thrift_VERSION}
+            "-Pbuild.dir=${CMAKE_CURRENT_BINARY_DIR}/build"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    # Enable publishing from CMake if the publishing information is provided
+    add_custom_target(MavenPublish
+        COMMENT "Publishing Java Library to Apache Maven staging"
+        COMMAND ${GRADLEW_EXECUTABLE} ${GRADLE_OPTS} clean uploadArchives
+            --console=plain --no-daemon
+            -Prelease=${PRELEASE}
+            -Pthrift.version=${thrift_VERSION}
+            "-Pbuild.dir=${CMAKE_CURRENT_BINARY_DIR}/build"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    # Hook the CMake install process to the results from make ALL.
+    # This works best when 'make all && sudo make install/fast' is used.
+    # Using slash to end the source location to avoid copying the directory path.
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/build/libs/
+            DESTINATION ${JAVA_INSTALL_DIR}
+            FILES_MATCHING PATTERN "libthrift-${thrift_VERSION}.jar")
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/build/deps/
+            DESTINATION ${JAVA_INSTALL_DIR}
+            FILES_MATCHING PATTERN "*.jar")
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/build/docs/javadoc/
+            DESTINATION ${JAVA_DOC_INSTALL_DIR})
+
+    if(BUILD_TESTING)
+        add_test(NAME JavaTest
+                COMMAND ${GRADLEW_EXECUTABLE} ${GRADLE_OPTS} test
+                    --console=plain --no-daemon
+                    -Prelease=${PRELEASE}
+                    -Pthrift.version=${thrift_VERSION}
+                    "-Pbuild.dir=${CMAKE_CURRENT_BINARY_DIR}/build"
+                    "-Pthrift.compiler=${THRIFT_COMPILER}"
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+
 endif()

@@ -22,7 +22,6 @@
 
 #include <thrift/transport/TTransport.h>
 #include <thrift/transport/TTransportException.h>
-#include <boost/shared_ptr.hpp>
 
 namespace apache {
 namespace thrift {
@@ -36,7 +35,7 @@ namespace transport {
  */
 class TServerTransport {
 public:
-  virtual ~TServerTransport() {}
+  virtual ~TServerTransport() = default;
 
   /**
    * Starts the server transport listening for new connections. Prior to this
@@ -56,8 +55,8 @@ public:
    * @return A new TTransport object
    * @throws TTransportException if there is an error
    */
-  boost::shared_ptr<TTransport> accept() {
-    boost::shared_ptr<TTransport> result = acceptImpl();
+  std::shared_ptr<TTransport> accept() {
+    std::shared_ptr<TTransport> result = acceptImpl();
     if (!result) {
       throw TTransportException("accept() may not return NULL");
     }
@@ -83,12 +82,21 @@ public:
   virtual void interruptChildren() {}
 
   /**
+  * Utility method
+  *
+  * @return server socket file descriptor
+  * @throw TTransportException If an error occurs
+  */
+
+  virtual THRIFT_SOCKET getSocketFD() { return -1; }
+
+  /**
    * Closes this transport such that future calls to accept will do nothing.
    */
   virtual void close() = 0;
 
 protected:
-  TServerTransport() {}
+  TServerTransport() = default;
 
   /**
    * Subclasses should implement this function for accept.
@@ -96,7 +104,7 @@ protected:
    * @return A newly allocated TTransport object
    * @throw TTransportException If an error occurs
    */
-  virtual boost::shared_ptr<TTransport> acceptImpl() = 0;
+  virtual std::shared_ptr<TTransport> acceptImpl() = 0;
 };
 }
 }

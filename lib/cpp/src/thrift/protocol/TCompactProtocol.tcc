@@ -21,6 +21,8 @@
 
 #include <limits>
 
+#include "thrift/config.h"
+
 /*
  * TCompactProtocol::i*ToZigzag depend on the fact that the right shift
  * operator on a signed integer is an arithmetic (sign-extending) shift.
@@ -196,7 +198,7 @@ template <class Transport_>
 uint32_t TCompactProtocolT<Transport_>::writeBool(const bool value) {
   uint32_t wsize = 0;
 
-  if (booleanField_.name != NULL) {
+  if (booleanField_.name != nullptr) {
     // we haven't written the field header yet
     wsize
       += writeFieldBeginInternal(booleanField_.name,
@@ -205,7 +207,7 @@ uint32_t TCompactProtocolT<Transport_>::writeBool(const bool value) {
                                  static_cast<int8_t>(value
                                                      ? detail::compact::CT_BOOLEAN_TRUE
                                                      : detail::compact::CT_BOOLEAN_FALSE));
-    booleanField_.name = NULL;
+    booleanField_.name = nullptr;
   } else {
     // we're not part of a field, so just write the value
     wsize
@@ -251,10 +253,10 @@ uint32_t TCompactProtocolT<Transport_>::writeI64(const int64_t i64) {
  */
 template <class Transport_>
 uint32_t TCompactProtocolT<Transport_>::writeDouble(const double dub) {
-  BOOST_STATIC_ASSERT(sizeof(double) == sizeof(uint64_t));
-  BOOST_STATIC_ASSERT(std::numeric_limits<double>::is_iec559);
+  static_assert(sizeof(double) == sizeof(uint64_t), "sizeof(double) == sizeof(uint64_t)");
+  static_assert(std::numeric_limits<double>::is_iec559, "std::numeric_limits<double>::is_iec559");
 
-  uint64_t bits = bitwise_cast<uint64_t>(dub);
+  auto bits = bitwise_cast<uint64_t>(dub);
   bits = THRIFT_htolell(bits);
   trans_->write((uint8_t*)&bits, 8);
   return 8;
@@ -272,7 +274,7 @@ template <class Transport_>
 uint32_t TCompactProtocolT<Transport_>::writeBinary(const std::string& str) {
   if(str.size() > (std::numeric_limits<uint32_t>::max)())
     throw TProtocolException(TProtocolException::SIZE_LIMIT);
-  uint32_t ssize = static_cast<uint32_t>(str.size());
+  auto ssize = static_cast<uint32_t>(str.size());
   uint32_t wsize = writeVarint32(ssize) ;
   // checking ssize + wsize > uint_max, but we don't want to overflow while checking for overflows.
   // transforming the check to ssize > uint_max - wsize
@@ -385,7 +387,7 @@ uint32_t TCompactProtocolT<Transport_>::writeVarint64(uint64_t n) {
  */
 template <class Transport_>
 uint64_t TCompactProtocolT<Transport_>::i64ToZigzag(const int64_t l) {
-  return (l << 1) ^ (l >> 63);
+  return (static_cast<uint64_t>(l) << 1) ^ (l >> 63);
 }
 
 /**
@@ -394,7 +396,7 @@ uint64_t TCompactProtocolT<Transport_>::i64ToZigzag(const int64_t l) {
  */
 template <class Transport_>
 uint32_t TCompactProtocolT<Transport_>::i32ToZigzag(const int32_t n) {
-  return (n << 1) ^ (n >> 31);
+  return (static_cast<uint32_t>(n) << 1) ^ (n >> 31);
 }
 
 /**
@@ -486,7 +488,7 @@ uint32_t TCompactProtocolT<Transport_>::readFieldBegin(std::string& name,
   }
 
   // mask off the 4 MSB of the type header. it could contain a field id delta.
-  int16_t modifier = (int16_t)(((uint8_t)byte & 0xf0) >> 4);
+  auto modifier = (int16_t)(((uint8_t)byte & 0xf0) >> 4);
   if (modifier == 0) {
     // not a delta, look ahead for the zigzag varint field id.
     rsize += readI16(fieldId);
@@ -651,8 +653,8 @@ uint32_t TCompactProtocolT<Transport_>::readI64(int64_t& i64) {
  */
 template <class Transport_>
 uint32_t TCompactProtocolT<Transport_>::readDouble(double& dub) {
-  BOOST_STATIC_ASSERT(sizeof(double) == sizeof(uint64_t));
-  BOOST_STATIC_ASSERT(std::numeric_limits<double>::is_iec559);
+  static_assert(sizeof(double) == sizeof(uint64_t), "sizeof(double) == sizeof(uint64_t)");
+  static_assert(std::numeric_limits<double>::is_iec559, "std::numeric_limits<double>::is_iec559");
 
   union {
     uint64_t bits;
@@ -693,9 +695,9 @@ uint32_t TCompactProtocolT<Transport_>::readBinary(std::string& str) {
   }
 
   // Use the heap here to prevent stack overflow for v. large strings
-  if (size > string_buf_size_ || string_buf_ == NULL) {
+  if (size > string_buf_size_ || string_buf_ == nullptr) {
     void* new_string_buf = std::realloc(string_buf_, (uint32_t)size);
-    if (new_string_buf == NULL) {
+    if (new_string_buf == nullptr) {
       throw std::bad_alloc();
     }
     string_buf_ = (uint8_t*)new_string_buf;
@@ -733,7 +735,7 @@ uint32_t TCompactProtocolT<Transport_>::readVarint64(int64_t& i64) {
   const uint8_t* borrowed = trans_->borrow(buf, &buf_size);
 
   // Fast path.
-  if (borrowed != NULL) {
+  if (borrowed != nullptr) {
     while (true) {
       uint8_t byte = borrowed[rsize];
       rsize++;

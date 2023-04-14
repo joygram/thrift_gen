@@ -20,6 +20,7 @@
 using System;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Thrift.Transport
@@ -42,7 +43,7 @@ namespace Thrift.Transport
         /// <summary>
         /// Timeout for the created server socket
         /// </summary>
-        private int clientTimeout = 0;
+        private readonly int clientTimeout;
 
         /// <summary>
         /// Whether or not to wrap new TSocket connections in buffers
@@ -65,12 +66,17 @@ namespace Thrift.Transport
         private LocalCertificateSelectionCallback localCertificateSelectionCallback;
 
         /// <summary>
+        /// The SslProtocols value that represents the protocol used for authentication.
+        /// </summary>
+        private readonly SslProtocols sslProtocols;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="TTLSServerSocket" /> class.
         /// </summary>
         /// <param name="port">The port where the server runs.</param>
         /// <param name="certificate">The certificate object.</param>
         public TTLSServerSocket(int port, X509Certificate2 certificate)
-            : this(port,  0, certificate)
+            : this(port, 0, certificate)
         {
         }
 
@@ -94,13 +100,16 @@ namespace Thrift.Transport
         /// <param name="certificate">The certificate object.</param>
         /// <param name="clientCertValidator">The certificate validator.</param>
         /// <param name="localCertificateSelectionCallback">The callback to select which certificate to use.</param>
+        /// <param name="sslProtocols">The SslProtocols value that represents the protocol used for authentication.</param>
         public TTLSServerSocket(
             int port,
             int clientTimeout,
             bool useBufferedSockets,
             X509Certificate2 certificate,
             RemoteCertificateValidationCallback clientCertValidator = null,
-            LocalCertificateSelectionCallback localCertificateSelectionCallback = null)
+            LocalCertificateSelectionCallback localCertificateSelectionCallback = null,
+            // TODO: Enable Tls11 and Tls12 (TLS 1.1 and 1.2) by default once we start using .NET 4.5+.
+            SslProtocols sslProtocols = SslProtocols.Tls)
         {
             if (!certificate.HasPrivateKey)
             {
@@ -108,20 +117,22 @@ namespace Thrift.Transport
             }
 
             this.port = port;
+            this.clientTimeout = clientTimeout;
             this.serverCertificate = certificate;
             this.useBufferedSockets = useBufferedSockets;
             this.clientCertValidator = clientCertValidator;
             this.localCertificateSelectionCallback = localCertificateSelectionCallback;
+            this.sslProtocols = sslProtocols;
             try
             {
                 // Create server socket
-                server = new TcpListener(System.Net.IPAddress.Any, this.port);
-                server.Server.NoDelay = true;
+                this.server = TSocketVersionizer.CreateTcpListener(this.port);
+                this.server.Server.NoDelay = true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 server = null;
-                throw new TTransportException("Could not create ServerSocket on port " + port + ".");
+                throw new TTransportException("Could not create ServerSocket on port " + this.port + ".", ex);
             }
         }
 
@@ -139,7 +150,7 @@ namespace Thrift.Transport
                 }
                 catch (SocketException sx)
                 {
-                    throw new TTransportException("Could not accept on listening socket: " + sx.Message);
+                    throw new TTransportException("Could not accept on listening socket: " + sx.Message, sx);
                 }
             }
         }
@@ -168,8 +179,8 @@ namespace Thrift.Transport
                     this.serverCertificate,
                     true,
                     this.clientCertValidator,
-                    this.localCertificateSelectionCallback
-                );
+                    this.localCertificateSelectionCallback,
+                    this.sslProtocols);
 
                 socket.setupTLS();
 
@@ -186,7 +197,7 @@ namespace Thrift.Transport
             }
             catch (Exception ex)
             {
-                throw new TTransportException(ex.ToString());
+                throw new TTransportException(ex.ToString(), ex);
             }
         }
 
@@ -203,7 +214,7 @@ namespace Thrift.Transport
                 }
                 catch (Exception ex)
                 {
-                    throw new TTransportException("WARNING: Could not close server socket: " + ex);
+                    throw new TTransportException("WARNING: Could not close server socket: " + ex, ex);
                 }
                 this.server = null;
             }

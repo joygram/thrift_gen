@@ -31,16 +31,12 @@
 #include <io.h>
 #endif
 
-#ifndef O_BINARY 
-#define O_BINARY 0x0000
-#endif //O_BINARY
-
 namespace apache {
 namespace thrift {
 namespace transport {
 
-TSimpleFileTransport::TSimpleFileTransport(const std::string& path, bool read, bool write, bool append)
-    : TFDTransport(-1, TFDTransport::CLOSE_ON_DESTROY) {
+TSimpleFileTransport::TSimpleFileTransport(const std::string& path, bool read, bool write)
+  : TFDTransport(-1, TFDTransport::CLOSE_ON_DESTROY) {
   int flags = 0;
   if (read && write) {
     flags = O_RDWR;
@@ -51,15 +47,8 @@ TSimpleFileTransport::TSimpleFileTransport(const std::string& path, bool read, b
   } else {
     throw TTransportException("Neither READ nor WRITE specified");
   }
-
-  flags |= O_BINARY; // unix에는 없지만 windows에서는 넣어주어야 모든 곳에서 사용가능 (O_BINARY아닐 때 \r\n을 붙이는 문제가 발생함.) - joygram(2016/02/01)
   if (write) {
-	  flags |= O_CREAT;
-	  if (append) {
-		  flags |= O_APPEND;
-	  } else if (false == read) {
-		  flags |= O_TRUNC; // 읽는 것도 아니고 덧대는 것이 아닌 경우 기존 내용 제거 joygram(2016/02/01) 
-	  }
+    flags |= O_CREAT | O_APPEND;
   }
 #ifndef _WIN32
   mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;

@@ -38,17 +38,18 @@ TEvhttpClientChannel::TEvhttpClientChannel(const std::string& host,
                                            const std::string& path,
                                            const char* address,
                                            int port,
-                                           struct event_base* eb)
-  : host_(host), path_(path), recvBuf_(NULL), conn_(NULL) {
-  conn_ = evhttp_connection_new(address, port);
-  if (conn_ == NULL) {
+                                           struct event_base* eb,
+                                           struct evdns_base* dnsbase)
+
+  : host_(host), path_(path), conn_(nullptr) {
+  conn_ = evhttp_connection_base_new(eb, dnsbase, address, port);
+  if (conn_ == nullptr) {
     throw TException("evhttp_connection_new failed");
   }
-  evhttp_connection_set_base(conn_, eb);
 }
 
 TEvhttpClientChannel::~TEvhttpClientChannel() {
-  if (conn_ != NULL) {
+  if (conn_ != nullptr) {
     evhttp_connection_free(conn_);
   }
 }
@@ -56,11 +57,8 @@ TEvhttpClientChannel::~TEvhttpClientChannel() {
 void TEvhttpClientChannel::sendAndRecvMessage(const VoidCallback& cob,
                                               apache::thrift::transport::TMemoryBuffer* sendBuf,
                                               apache::thrift::transport::TMemoryBuffer* recvBuf) {
-  cob_ = cob;
-  recvBuf_ = recvBuf;
-
   struct evhttp_request* req = evhttp_request_new(response, this);
-  if (req == NULL) {
+  if (req == nullptr) {
     throw TException("evhttp_request_new failed");
   }
 
@@ -88,6 +86,8 @@ void TEvhttpClientChannel::sendAndRecvMessage(const VoidCallback& cob,
   if (rv != 0) {
     throw TException("evhttp_make_request failed");
   }
+
+  completionQueue_.push(Completion(cob, recvBuf));
 }
 
 void TEvhttpClientChannel::sendMessage(const VoidCallback& cob,
@@ -107,9 +107,12 @@ void TEvhttpClientChannel::recvMessage(const VoidCallback& cob,
 }
 
 void TEvhttpClientChannel::finish(struct evhttp_request* req) {
-  if (req == NULL) {
+  assert(!completionQueue_.empty());
+  Completion completion = completionQueue_.front();
+  completionQueue_.pop();
+  if (req == nullptr) {
     try {
-      cob_();
+      completion.first();
     } catch (const TTransportException& e) {
       if (e.getType() == TTransportException::END_OF_FILE)
         throw TException("connect failed");
@@ -119,7 +122,7 @@ void TEvhttpClientChannel::finish(struct evhttp_request* req) {
     return;
   } else if (req->response_code != 200) {
     try {
-      cob_();
+      completion.first();
     } catch (const TTransportException& e) {
       std::stringstream ss;
       ss << "server returned code " << req->response_code;
@@ -132,14 +135,14 @@ void TEvhttpClientChannel::finish(struct evhttp_request* req) {
     }
     return;
   }
-  recvBuf_->resetBuffer(EVBUFFER_DATA(req->input_buffer),
+  completion.second->resetBuffer(EVBUFFER_DATA(req->input_buffer),
                         static_cast<uint32_t>(EVBUFFER_LENGTH(req->input_buffer)));
-  cob_();
+  completion.first();
   return;
 }
 
 /* static */ void TEvhttpClientChannel::response(struct evhttp_request* req, void* arg) {
-  TEvhttpClientChannel* self = (TEvhttpClientChannel*)arg;
+  auto* self = (TEvhttpClientChannel*)arg;
   try {
     self->finish(req);
   } catch (std::exception& e) {

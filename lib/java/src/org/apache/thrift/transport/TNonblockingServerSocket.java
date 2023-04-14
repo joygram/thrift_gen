@@ -93,7 +93,7 @@ public class TNonblockingServerSocket extends TNonblockingServerTransport {
       serverSocket_.bind(args.bindAddr, args.backlog);
     } catch (IOException ioe) {
       serverSocket_ = null;
-      throw new TTransportException("Could not create ServerSocket on address " + args.bindAddr.toString() + ".");
+      throw new TTransportException("Could not create ServerSocket on address " + args.bindAddr.toString() + ".", ioe);
     }
   }
 
@@ -103,7 +103,7 @@ public class TNonblockingServerSocket extends TNonblockingServerTransport {
       try {
         serverSocket_.setSoTimeout(0);
       } catch (SocketException sx) {
-        sx.printStackTrace();
+        LOGGER.error("Socket exception while setting socket timeout", sx);
       }
     }
   }

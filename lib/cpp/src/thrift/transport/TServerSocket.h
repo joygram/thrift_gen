@@ -20,16 +20,39 @@
 #ifndef _THRIFT_TRANSPORT_TSERVERSOCKET_H_
 #define _THRIFT_TRANSPORT_TSERVERSOCKET_H_ 1
 
-#include <thrift/transport/TServerTransport.h>
+#include <thrift/concurrency/Mutex.h>
 #include <thrift/transport/PlatformSocket.h>
-#include <thrift/cxxfunctional.h>
-#include <boost/shared_ptr.hpp>
+#include <thrift/transport/TServerTransport.h>
+
+#include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
 
 namespace apache {
 namespace thrift {
 namespace transport {
 
 class TSocket;
+
+class TGetAddrInfoWrapper {
+public:
+  TGetAddrInfoWrapper(const char* node, const char* service, const struct addrinfo* hints);
+
+  virtual ~TGetAddrInfoWrapper();
+
+  int init();
+  const struct addrinfo* res();
+
+private:
+  const char* node_;
+  const char* service_;
+  const struct addrinfo* hints_;
+  struct addrinfo* res_;
+};
 
 /**
  * Server socket implementation of TServerTransport. Wrapper around a unix
@@ -38,7 +61,7 @@ class TSocket;
  */
 class TServerSocket : public TServerTransport {
 public:
-  typedef apache::thrift::stdcxx::function<void(THRIFT_SOCKET fd)> socket_func_t;
+  typedef std::function<void(THRIFT_SOCKET fd)> socket_func_t;
 
   const static int DEFAULT_BACKLOG = 1024;
 
@@ -73,7 +96,7 @@ public:
    */
   TServerSocket(const std::string& path);
 
-  virtual ~TServerSocket();
+  ~TServerSocket() override;
 
   void setSendTimeout(int sendTimeout);
   void setRecvTimeout(int recvTimeout);
@@ -113,16 +136,20 @@ public:
   // \throws std::logic_error if listen() has been called
   void setInterruptableChildren(bool enable);
 
+  THRIFT_SOCKET getSocketFD() override { return serverSocket_; }
+
   int getPort();
 
-  void listen();
-  void interrupt();
-  void interruptChildren();
-  void close();
+  void listen() override;
+  void interrupt() override;
+  void interruptChildren() override;
+  void close() override;
 
 protected:
-  boost::shared_ptr<TTransport> acceptImpl();
-  virtual boost::shared_ptr<TSocket> createSocket(THRIFT_SOCKET client);
+  std::shared_ptr<TTransport> acceptImpl() override;
+  virtual std::shared_ptr<TSocket> createSocket(THRIFT_SOCKET client);
+  bool interruptableChildren_;
+  std::shared_ptr<THRIFT_SOCKET> pChildInterruptSockReader_; // if interruptableChildren_ this is shared with child TSockets
 
 private:
   void notify(THRIFT_SOCKET notifySock);
@@ -140,13 +167,12 @@ private:
   int tcpSendBuffer_;
   int tcpRecvBuffer_;
   bool keepAlive_;
-  bool interruptableChildren_;
   bool listening_;
 
+  concurrency::Mutex rwMutex_;                                 // thread-safe interrupt
   THRIFT_SOCKET interruptSockWriter_;                          // is notified on interrupt()
   THRIFT_SOCKET interruptSockReader_;                          // is used in select/poll with serverSocket_ for interruptability
   THRIFT_SOCKET childInterruptSockWriter_;                     // is notified on interruptChildren()
-  boost::shared_ptr<THRIFT_SOCKET> pChildInterruptSockReader_; // if interruptableChildren_ this is shared with child TSockets
 
   socket_func_t listenCallback_;
   socket_func_t acceptCallback_;

@@ -1,0 +1,16 @@
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.deps.json
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.dll
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.pdb
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.GeneratedMSBuildEditorConfig.editorconfig
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.csproj.CoreCompileInputs.cache
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.dll
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.pdb
+D:\sky_projects\third_party_build\cpp\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.csproj.AssemblyReference.cache
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.deps.json
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.dll
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\bin\Release\netstandard2.0\Thrift.pdb
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.csproj.AssemblyReference.cache
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.GeneratedMSBuildEditorConfig.editorconfig
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.gen.csproj.CoreCompileInputs.cache
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.dll
+D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\obj\Release\netstandard2.0\Thrift.pdb

@@ -29,7 +29,6 @@ import Network
 import Network.URI
 import System.Environment
 import System.Exit
-import System.Posix.Unistd
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.HashMap.Strict as Map
 import qualified Data.HashSet as Set
@@ -47,6 +46,7 @@ import Thrift.Transport.HttpClient
 import Thrift.Protocol
 import Thrift.Protocol.Binary
 import Thrift.Protocol.Compact
+import Thrift.Protocol.Header
 import Thrift.Protocol.JSON
 
 data Options = Options
@@ -86,12 +86,14 @@ getTransport t host port = do return (NoTransport $ "Unsupported transport: " ++
 data ProtocolType = Binary
                   | Compact
                   | JSON
+                  | Header
                   deriving (Show, Eq)
 
 getProtocol :: String -> ProtocolType
 getProtocol "binary"  = Binary
 getProtocol "compact" = Compact
 getProtocol "json"    = JSON
+getProtocol "header" = Header
 getProtocol p = error $ "Unsupported Protocol: " ++ p
 
 defaultOptions :: Options
@@ -105,7 +107,7 @@ defaultOptions = Options
   , testLoops    = 1
   }
 
-runClient :: (Protocol p, Transport t) => p t -> IO ()
+runClient :: Protocol p => p -> IO ()
 runClient p = do
   let prot = (p,p)
   putStrLn "Starting Tests"
@@ -169,13 +171,13 @@ runClient p = do
                       }
   putStrLn "testNest"
   nestOut <- Client.testNest prot nestIn
-  when (nestIn /= nestOut) exitSuccess
+  when (nestIn /= nestOut) exitFailure
 
   -- Map Test
   let mapIn = Map.fromList $ map (\i -> (i, i-10)) [1..5]
   putStrLn "testMap"
   mapOut <- Client.testMap prot mapIn
-  when (mapIn /= mapOut) exitSuccess
+  when (mapIn /= mapOut) exitFailure
 
   -- Set Test
   let setIn = Set.fromList [-2..3]
@@ -267,6 +269,7 @@ main = do
                        Binary  -> runClient $ BinaryProtocol t
                        Compact -> runClient $ CompactProtocol t
                        JSON    -> runClient $ JSONProtocol t
+                       Header  -> createHeaderProtocol t t >>= runClient
     runTest loops p t = do
       let client = makeClient p t
       replicateM_ loops client

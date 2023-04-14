@@ -507,18 +507,17 @@ main(int argc, char *argv[])
 
     /* Make sure the server stopped only because it was interrupted (by the
        child process terminating) */
-    g_assert (g_error_matches (error,
-                               THRIFT_SERVER_SOCKET_ERROR,
-                               THRIFT_SERVER_SOCKET_ERROR_ACCEPT));
+    g_assert(!error || g_error_matches(error,
+                                       THRIFT_SERVER_SOCKET_ERROR,
+                                       THRIFT_SERVER_SOCKET_ERROR_ACCEPT));
 
     /* Free our resources */
-    g_object_unref (server);
-    g_object_unref (transport_factory);
-    g_object_unref (protocol_factory);
-    g_object_unref (server_transport);
-
-    g_object_unref (processor);
-    g_object_unref (handler);
+    g_clear_object (&server);
+    g_clear_object (&protocol_factory);
+    g_clear_object (&transport_factory);
+    g_clear_object (&server_transport);
+    g_clear_object (&processor);
+    g_clear_object (&handler);
 
     /* Wait for the child process to complete and return its exit status */
     g_assert (wait (&status) == pid);

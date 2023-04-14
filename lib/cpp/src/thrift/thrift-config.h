@@ -20,11 +20,5 @@
 #ifdef _WIN32
 #include <thrift/windows/config.h>
 #else
-#include <stdlib.h>
-namespace std
-{
-	using ::malloc;
-	using ::realloc;
-}
 #include <thrift/config.h>
 #endif

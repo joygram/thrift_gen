@@ -61,8 +61,6 @@ TutorialClient_LDADD = \
 #
 # Common thrift code generation rules
 #
-THRIFT = $(top_builddir)/compiler/cpp/thrift
-
 gen-cpp/Calculator.cpp gen-cpp/SharedService.cpp gen-cpp/shared_constants.cpp gen-cpp/shared_types.cpp gen-cpp/tutorial_constants.cpp gen-cpp/tutorial_types.cpp: $(top_srcdir)/tutorial/tutorial.thrift
 	$(THRIFT) --gen cpp -r $<
 
@@ -71,7 +69,7 @@ AM_CXXFLAGS = -Wall -Wextra -pedantic
 AM_LDFLAGS = $(BOOST_LDFLAGS) $(LIBEVENT_LDFLAGS)
 
 clean-local:
-	$(RM) -r gen-cpp
+	$(RM) gen-cpp/*
 
 tutorialserver: all
 	./TutorialServer

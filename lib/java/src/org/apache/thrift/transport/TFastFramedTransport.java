@@ -19,12 +19,12 @@
 package org.apache.thrift.transport;
 
 /**
- * This transport is wire compatible with {@link TFramedTransport}, but makes 
+ * This transport is wire compatible with {@link TFramedTransport}, but makes
  * use of reusable, expanding read and write buffers in order to avoid
  * allocating new byte[]s all the time. Since the buffers only expand, you
  * should probably only use this transport if your messages are not too variably
  * large, unless the persistent memory cost is not an issue.
- * 
+ *
  * This implementation is NOT threadsafe.
  */
 public class TFastFramedTransport extends TTransport {
@@ -65,7 +65,8 @@ public class TFastFramedTransport extends TTransport {
 
   private final TTransport underlying;
   private final AutoExpandingBufferWriteTransport writeBuffer;
-  private final AutoExpandingBufferReadTransport readBuffer;
+  private AutoExpandingBufferReadTransport readBuffer;
+  private final int initialBufferCapacity;
   private final byte[] i32buf = new byte[4];
   private final int maxLength;
 
@@ -91,7 +92,7 @@ public class TFastFramedTransport extends TTransport {
   }
 
   /**
-   * 
+   *
    * @param underlying Transport that real reads and writes will go through to.
    * @param initialBufferCapacity The initial size of the read and write buffers.
    * In practice, it's not critical to set this unless you know in advance that
@@ -104,8 +105,9 @@ public class TFastFramedTransport extends TTransport {
   public TFastFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
     this.underlying = underlying;
     this.maxLength = maxLength;
-    writeBuffer = new AutoExpandingBufferWriteTransport(initialBufferCapacity, 1.5);
-    readBuffer = new AutoExpandingBufferReadTransport(initialBufferCapacity, 1.5);
+    this.initialBufferCapacity = initialBufferCapacity;
+    readBuffer = new AutoExpandingBufferReadTransport(initialBufferCapacity);
+    writeBuffer = new AutoExpandingBufferWriteTransport(initialBufferCapacity, 4);
   }
 
   @Override
@@ -141,11 +143,14 @@ public class TFastFramedTransport extends TTransport {
     int size = TFramedTransport.decodeFrameSize(i32buf);
 
     if (size < 0) {
-      throw new TTransportException("Read a negative frame size (" + size + ")!");
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
     }
 
     if (size > maxLength) {
-      throw new TTransportException("Frame size (" + size + ") larger than max length (" + maxLength + ")!");
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA,
+          "Frame size (" + size + ") larger than max length (" + maxLength + ")!");
     }
 
     readBuffer.fill(underlying, size);
@@ -161,12 +166,19 @@ public class TFastFramedTransport extends TTransport {
     readBuffer.consumeBuffer(len);
   }
 
+  /**
+   * Only clears the read buffer!
+   */
+  public void clear() {
+    readBuffer = new AutoExpandingBufferReadTransport(initialBufferCapacity);
+  }
+
   @Override
   public void flush() throws TTransportException {
-    int length = writeBuffer.getPos();
-    TFramedTransport.encodeFrameSize(length, i32buf);
-    underlying.write(i32buf, 0, 4);
-    underlying.write(writeBuffer.getBuf().array(), 0, length);
+    int payloadLength = writeBuffer.getLength() - 4;        
+    byte[] data = writeBuffer.getBuf().array();
+    TFramedTransport.encodeFrameSize(payloadLength, data);
+    underlying.write(data, 0, payloadLength + 4);
     writeBuffer.reset();
     underlying.flush();
   }

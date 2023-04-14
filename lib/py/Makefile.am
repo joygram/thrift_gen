@@ -19,7 +19,18 @@
 AUTOMAKE_OPTIONS = serial-tests
 DESTDIR ?= /
 
-all-local:
+if WITH_PY3
+py3-build:
+	$(PYTHON3) setup.py build
+py3-test: py3-build
+	$(PYTHON3) test/thrift_json.py
+	$(PYTHON3) test/test_sslsocket.py
+else
+py3-build:
+py3-test:
+endif
+
+all-local: py3-build
 	$(PYTHON) setup.py build
 
 # We're ignoring prefix here because site-packages seems to be
@@ -29,16 +40,26 @@ all-local:
 install-exec-hook:
 	$(PYTHON) setup.py install --root=$(DESTDIR) --prefix=$(PY_PREFIX) $(PYTHON_SETUPUTIL_ARGS)
 
+check-local: all py3-test
+	$(PYTHON) test/thrift_json.py
+	$(PYTHON) test/test_sslsocket.py
+
 clean-local:
 	$(RM) -r build
+	find . -type f \( -iname "*.pyc" \) | xargs rm -f
+	find . -type d \( -iname "__pycache__" -or -iname "_trial_temp" \) | xargs rm -rf
 
-check-local: all
+dist-hook:
+	find $(distdir) -type f \( -iname "*.pyc" \) | xargs rm -f
+	find $(distdir) -type d \( -iname "__pycache__" -or -iname "_trial_temp" \) | xargs rm -rf
 
 EXTRA_DIST = \
 	CMakeLists.txt \
+	MANIFEST.in \
 	coding_standards.md \
 	compat \
 	setup.py \
 	setup.cfg \
 	src \
+	test \
 	README.md

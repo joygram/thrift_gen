@@ -23,7 +23,7 @@
 #include <thrift/protocol/TProtocol.h>
 #include <thrift/protocol/TVirtualProtocol.h>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace apache {
 namespace thrift {
@@ -36,13 +36,12 @@ namespace protocol {
  */
 template <class Transport_, class ByteOrder_ = TNetworkBigEndian>
 class TBinaryProtocolT : public TVirtualProtocol<TBinaryProtocolT<Transport_, ByteOrder_> > {
-protected:
+public:
   static const int32_t VERSION_MASK = ((int32_t)0xffff0000);
   static const int32_t VERSION_1 = ((int32_t)0x80010000);
   // VERSION_2 (0x80020000) was taken by TDenseProtocol (which has since been removed)
 
-public:
-  TBinaryProtocolT(boost::shared_ptr<Transport_> trans)
+  TBinaryProtocolT(std::shared_ptr<Transport_> trans)
     : TVirtualProtocol<TBinaryProtocolT<Transport_, ByteOrder_> >(trans),
       trans_(trans.get()),
       string_limit_(0),
@@ -50,7 +49,7 @@ public:
       strict_read_(false),
       strict_write_(true) {}
 
-  TBinaryProtocolT(boost::shared_ptr<Transport_> trans,
+  TBinaryProtocolT(std::shared_ptr<Transport_> trans,
                    int32_t string_limit,
                    int32_t container_limit,
                    bool strict_read,
@@ -202,7 +201,7 @@ public:
       strict_read_(strict_read),
       strict_write_(strict_write) {}
 
-  virtual ~TBinaryProtocolFactoryT() {}
+  ~TBinaryProtocolFactoryT() override = default;
 
   void setStringSizeLimit(int32_t string_limit) { string_limit_ = string_limit; }
 
@@ -213,26 +212,24 @@ public:
     strict_write_ = strict_write;
   }
 
-  boost::shared_ptr<TProtocol> getProtocol(boost::shared_ptr<TTransport> trans) {
-    boost::shared_ptr<Transport_> specific_trans = boost::dynamic_pointer_cast<Transport_>(trans);
+  std::shared_ptr<TProtocol> getProtocol(std::shared_ptr<TTransport> trans) override {
+    std::shared_ptr<Transport_> specific_trans = std::dynamic_pointer_cast<Transport_>(trans);
     TProtocol* prot;
     if (specific_trans) {
-      prot = new TBinaryProtocolT<Transport_, ByteOrder_>(
-        specific_trans,
-        string_limit_,
-        container_limit_,
-        strict_read_,
-        strict_write_);
+      prot = new TBinaryProtocolT<Transport_, ByteOrder_>(specific_trans,
+                                                          string_limit_,
+                                                          container_limit_,
+                                                          strict_read_,
+                                                          strict_write_);
     } else {
-      prot = new TBinaryProtocolT<TTransport, ByteOrder_>(
-        trans,
-        string_limit_,
-        container_limit_,
-        strict_read_,
-        strict_write_);
+      prot = new TBinaryProtocolT<TTransport, ByteOrder_>(trans,
+                                                          string_limit_,
+                                                          container_limit_,
+                                                          strict_read_,
+                                                          strict_write_);
     }
 
-    return boost::shared_ptr<TProtocol>(prot);
+    return std::shared_ptr<TProtocol>(prot);
   }
 
 private:

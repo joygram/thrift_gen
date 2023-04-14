@@ -76,12 +76,14 @@ public abstract class TServiceClient {
   protected void receiveBase(TBase<?,?> result, String methodName) throws TException {
     TMessage msg = iprot_.readMessageBegin();
     if (msg.type == TMessageType.EXCEPTION) {
-      TApplicationException x = TApplicationException.read(iprot_);
+      TApplicationException x = new TApplicationException();
+      x.read(iprot_);
       iprot_.readMessageEnd();
       throw x;
     }
     if (msg.seqid != seqid_) {
-      throw new TApplicationException(TApplicationException.BAD_SEQUENCE_ID, methodName + " failed: out of sequence response");
+      throw new TApplicationException(TApplicationException.BAD_SEQUENCE_ID,
+          String.format("%s failed: out of sequence response: expected %d but got %d", methodName, seqid_, msg.seqid));
     }
     result.read(iprot_);
     iprot_.readMessageEnd();

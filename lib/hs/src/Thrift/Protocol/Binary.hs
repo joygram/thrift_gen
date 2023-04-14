@@ -25,6 +25,8 @@
 module Thrift.Protocol.Binary
     ( module Thrift.Protocol
     , BinaryProtocol(..)
+    , versionMask
+    , version1
     ) where
 
 import Control.Exception ( throw )
@@ -35,6 +37,7 @@ import Data.Functor
 import Data.Int
 import Data.Monoid
 import Data.Text.Lazy.Encoding ( decodeUtf8, encodeUtf8 )
+import Data.Word
 
 import Thrift.Protocol
 import Thrift.Transport
@@ -47,36 +50,54 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text.Lazy as LT
 
-data BinaryProtocol a = BinaryProtocol a
+versionMask :: Int32
+versionMask = fromIntegral (0xffff0000 :: Word32)
+
+version1 :: Int32
+version1 = fromIntegral (0x80010000 :: Word32)
+
+data BinaryProtocol a = Transport a => BinaryProtocol a
+
+getTransport :: Transport t => BinaryProtocol t -> t
+getTransport (BinaryProtocol t) = t
 
 -- NOTE: Reading and Writing functions rely on Builders and Data.Binary to
 -- encode and decode data.  Data.Binary assumes that the binary values it is
 -- encoding to and decoding from are in BIG ENDIAN format, and converts the
 -- endianness as necessary to match the local machine.
-instance Protocol BinaryProtocol where
-    getTransport (BinaryProtocol t) = t
+instance Transport t => Protocol (BinaryProtocol t) where
+    readByte p = tReadAll (getTransport p) 1
+    -- flushTransport p = tFlush (getTransport p)
+    writeMessage p (n, t, s) f = do
+      tWrite (getTransport p) messageBegin
+      f
+      tFlush $ getTransport p
+      where
+        messageBegin = toLazyByteString $
+          buildBinaryValue (TI32 (version1 .|. fromIntegral (fromEnum t))) <>
+          buildBinaryValue (TString $ encodeUtf8 n) <>
+          buildBinaryValue (TI32 s)
 
-    writeMessageBegin p (n, t, s) = tWrite (getTransport p) $ toLazyByteString $
-        buildBinaryValue (TI32 (version1 .|. fromIntegral (fromEnum t))) <>
-        buildBinaryValue (TString $ encodeUtf8 n) <>
-        buildBinaryValue (TI32 s)
+    readMessage p = (readMessageBegin p >>=)
+      where
+        readMessageBegin p = runParser p $ do
+          TI32 ver <- parseBinaryValue T_I32
+          if ver .&. versionMask /= version1
+            then throw $ ProtocolExn PE_BAD_VERSION "Missing version identifier"
+            else do
+              TString s <- parseBinaryValue T_STRING
+              TI32 sz <- parseBinaryValue T_I32
+              return (decodeUtf8 s, toEnum $ fromIntegral $ ver .&. 0xFF, sz)
 
-    readMessageBegin p = runParser p $ do
-      TI32 ver <- parseBinaryValue T_I32
-      if ver .&. versionMask /= version1
-        then throw $ ProtocolExn PE_BAD_VERSION "Missing version identifier"
-        else do
-          TString s <- parseBinaryValue T_STRING
-          TI32 sz <- parseBinaryValue T_I32
-          return (decodeUtf8 s, toEnum $ fromIntegral $ ver .&. 0xFF, sz)
+    writeVal p = tWrite (getTransport p) . toLazyByteString . buildBinaryValue
+    readVal p = runParser p . parseBinaryValue
 
+instance Transport t => StatelessProtocol (BinaryProtocol t) where
     serializeVal _ = toLazyByteString . buildBinaryValue
     deserializeVal _ ty bs =
       case LP.eitherResult $ LP.parse (parseBinaryValue ty) bs of
         Left s -> error s
         Right val -> val
-
-    readVal p = runParser p . parseBinaryValue
 
 -- | Writing Functions
 buildBinaryValue :: ThriftVal -> Builder
@@ -104,6 +125,7 @@ buildBinaryValue (TDouble d) = doubleBE d
 buildBinaryValue (TString s) = int32BE len <> lazyByteString s
   where
     len :: Int32 = fromIntegral (LBS.length s)
+buildBinaryValue (TBinary s) = buildBinaryValue (TString s)
 
 buildBinaryStruct :: Map.HashMap Int16 (LT.Text, ThriftVal) -> Builder
 buildBinaryStruct = Map.foldrWithKey combine mempty
@@ -121,7 +143,7 @@ buildBinaryList = foldr (mappend . buildBinaryValue) mempty
 
 -- | Reading Functions
 parseBinaryValue :: ThriftType -> P.Parser ThriftVal
-parseBinaryValue (T_STRUCT _) = TStruct <$> parseBinaryStruct
+parseBinaryValue (T_STRUCT tmap) = TStruct <$> parseBinaryStruct tmap
 parseBinaryValue (T_MAP _ _) = do
   kt <- parseType
   vt <- parseType
@@ -141,18 +163,23 @@ parseBinaryValue T_I16 = TI16 . Binary.decode . LBS.fromStrict <$> P.take 2
 parseBinaryValue T_I32 = TI32 . Binary.decode . LBS.fromStrict <$> P.take 4
 parseBinaryValue T_I64 = TI64 . Binary.decode . LBS.fromStrict <$> P.take 8
 parseBinaryValue T_DOUBLE = TDouble . bsToDouble <$> P.take 8
-parseBinaryValue T_STRING = do
-  i :: Int32  <- Binary.decode . LBS.fromStrict <$> P.take 4
-  TString . LBS.fromStrict <$> P.take (fromIntegral i)
+parseBinaryValue T_STRING = parseBinaryString TString
+parseBinaryValue T_BINARY = parseBinaryString TBinary
 parseBinaryValue ty = error $ "Cannot read value of type " ++ show ty
 
-parseBinaryStruct :: P.Parser (Map.HashMap Int16 (LT.Text, ThriftVal))
-parseBinaryStruct = Map.fromList <$> P.manyTill parseField (matchType T_STOP)
+parseBinaryString ty = do
+  i :: Int32  <- Binary.decode . LBS.fromStrict <$> P.take 4
+  ty . LBS.fromStrict <$> P.take (fromIntegral i)
+
+parseBinaryStruct :: TypeMap -> P.Parser (Map.HashMap Int16 (LT.Text, ThriftVal))
+parseBinaryStruct tmap = Map.fromList <$> P.manyTill parseField (matchType T_STOP)
   where
     parseField = do
       t <- parseType
       n <- Binary.decode . LBS.fromStrict <$> P.take 2
-      v <- parseBinaryValue t
+      v <- case (t, Map.lookup n tmap) of
+             (T_STRING, Just (_, T_BINARY)) -> parseBinaryValue T_BINARY
+             _ -> parseBinaryValue t
       return (n, ("", v))
 
 parseBinaryMap :: ThriftType -> ThriftType -> Int32 -> P.Parser [(ThriftVal, ThriftVal)]

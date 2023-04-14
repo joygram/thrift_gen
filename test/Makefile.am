@@ -17,12 +17,22 @@
 # under the License.
 #
 
-SUBDIRS =
+SUBDIRS = features
 PRECROSS_TARGET =
 
 if WITH_C_GLIB
 SUBDIRS += c_glib
 PRECROSS_TARGET += precross-c_glib
+endif
+
+if WITH_CL
+SUBDIRS += cl
+PRECROSS_TARGET += precross-cl
+endif
+
+if WITH_MONO
+SUBDIRS += csharp
+PRECROSS_TARGET += precross-csharp
 endif
 
 if WITH_CPP
@@ -40,11 +50,18 @@ SUBDIRS += php
 PRECROSS_TARGET += precross-php
 endif
 
+if WITH_DART
+SUBDIRS += dart
+PRECROSS_TARGET += precross-dart
+endif
+
 if WITH_PYTHON
 SUBDIRS += py
 PRECROSS_TARGET += precross-py
-SUBDIRS += py.twisted
 SUBDIRS += py.tornado
+if WITH_TWISTED_TEST
+SUBDIRS += py.twisted
+endif
 endif
 
 if WITH_RUBY
@@ -60,6 +77,11 @@ if WITH_HAXE
 SUBDIRS += haxe
 endif
 
+if WITH_DOTNET
+SUBDIRS += netcore
+SUBDIRS += netstd
+endif
+
 if WITH_GO
 SUBDIRS += go
 PRECROSS_TARGET += precross-go
@@ -67,33 +89,61 @@ endif
 
 if WITH_ERLANG
 SUBDIRS += erl
+PRECROSS_TARGET += precross-erl
+endif
+
+if WITH_LUA
+SUBDIRS += lua
+PRECROSS_TARGET += precross-lua
+endif
+
+if WITH_RS
+SUBDIRS += rs
+PRECROSS_TARGET += precross-rs
 endif
 
 #
-# generate html for ThriftTest.thrift
+# generate html for ThriftTest.thrift AND validate it!
 #
+if WITH_NODEJS
 check-local:
 	$(top_builddir)/compiler/cpp/thrift --gen html -r $(top_srcdir)/test/ThriftTest.thrift
+	$(top_builddir)/node_modules/.bin/html-validator --file=gen-html/index.html --verbose
+	$(top_builddir)/node_modules/.bin/html-validator --file=gen-html/ThriftTest.html --verbose
+else
+check-local:
+	$(top_builddir)/compiler/cpp/thrift --gen html -r $(top_srcdir)/test/ThriftTest.thrift
+endif
 
 clean-local:
-	rm -rf $(top_srcdir)/test/gen-html
+	$(RM) -r $(top_srcdir)/test/gen-html/
+	find . -type d -name "__pycache__" | xargs rm -rf
+	find . -type f -name "*.pyc" | xargs rm -f
+
+dist-hook:
+	$(RM) -r $(distdir)/gen-html/
+	find $(distdir) -type d -name "__pycache__" | xargs rm -rf
+	find $(distdir) -type f -name "*.pyc" | xargs rm -f
 
 EXTRA_DIST = \
 	audit \
-	crossrunner \
-	keys \
 	c_glib \
+	cl \
 	cpp \
+	crossrunner \
+	dart \
 	erl \
 	hs \
+	keys \
 	lua \
 	ocaml \
 	perl \
 	php \
 	py \
-	py.twisted \
 	py.tornado \
+	py.twisted \
 	rb \
+	rs \
 	threads \
 	AnnotationTest.thrift \
 	BrokenConstants.thrift \
@@ -101,10 +151,15 @@ EXTRA_DIST = \
 	DebugProtoTest.thrift \
 	DenseLinkingTest.thrift \
 	DocTest.thrift \
+	DoubleConstantsTest.thrift \
+	EnumContainersTest.thrift \
 	EnumTest.thrift \
-	known_failures_Linux.json \
+	FullCamelTest.thrift \
 	Include.thrift \
+	Int64Test.thrift \
 	JavaBeansTest.thrift \
+	JavaDeepCopyTest.thrift \
+	JavaTypes.thrift \
 	JsDeepConstructorTest.thrift \
 	ManyOptionals.thrift \
 	ManyTypedefs.thrift \
@@ -114,12 +169,15 @@ EXTRA_DIST = \
 	ReuseObjects.thrift \
 	SmallTest.thrift \
 	StressTest.thrift \
-	test.py \
-	tests.json \
 	ThriftTest.thrift \
 	TypedefTest.thrift \
-	FastbinaryTest.py \
-	result.html \
+	UnsafeTypes.thrift \
+	known_failures_Linux.json \
+	test.py \
+	tests.json \
+	rebuild_known_failures.sh \
+	result.js \
+	index.html \
 	README.md \
 	valgrind.suppress
 

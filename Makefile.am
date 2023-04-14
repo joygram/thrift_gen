@@ -29,36 +29,81 @@ if WITH_TUTORIAL
 SUBDIRS += tutorial
 endif
 
+clean-local:
+	$(RM) -r vendor/
+
+distclean-local:
+	$(RM) -r .dub/
+	$(RM) -r autom4te.cache/
+
+CLEANFILES = \
+	composer.lock \
+	dub.selections.json
+
+DISTCLEANFILES = \
+	Makefile \
+	Makefile.in \
+	aclocal.m4 \
+	apache-thrift-test-library \
+	autoscan.log \
+	compile \
+	config.guess \
+	config.hin \
+	config.hin~ \
+	config.log \
+	config.status \
+	config.sub \
+	configure \
+	configure.scan \
+    debcomp \
+    install-sh \
+    ltmain.sh \
+    missing \
+    ylwrap
+
 dist-hook:
-	find $(distdir) -type f \( -iname ".DS_Store" -or -iname "._*" -or -iname ".gitignore" \) | xargs rm -rf
+	find $(distdir) -type f \( -iname ".DS_Store" -or -iname "._*" -or -iname ".gitignore" \) | xargs rm -f
 	find $(distdir) -type d \( -iname ".deps" -or -iname ".libs" \) | xargs rm -rf
 	find $(distdir) -type d \( -iname ".svn" -or -iname ".git" \) | xargs rm -rf
 
 print-version:
-	@echo $(VERSION)
+	@echo $(PACKAGE_VERSION)
 
 .PHONY: precross cross
 precross-%: all
 	$(MAKE) -C $* precross
 precross: all precross-test precross-lib
 
-# TODO: generate --server and --client switches from "--with(out)-..." build flags
-
-
 empty :=
 space := $(empty) $(empty)
 comma := ,
 
-CROSS_LANGS = @MAYBE_CPP@ @MAYBE_C_GLIB@ @MAYBE_JAVA@ @MAYBE_CSHARP@ @MAYBE_PYTHON@ @MAYBE_RUBY@ @MAYBE_HASKELL@ @MAYBE_PERL@ @MAYBE_PHP@ @MAYBE_GO@ @MAYBE_NODEJS@
+CROSS_LANGS = @MAYBE_CPP@ @MAYBE_C_GLIB@ @MAYBE_CL@ @MAYBE_D@ @MAYBE_JAVA@ @MAYBE_CSHARP@ @MAYBE_PYTHON@ @MAYBE_PY3@ @MAYBE_RUBY@ @MAYBE_HASKELL@ @MAYBE_PERL@ @MAYBE_PHP@ @MAYBE_GO@ @MAYBE_NODEJS@ @MAYBE_DART@ @MAYBE_ERLANG@ @MAYBE_LUA@ @MAYBE_RS@ @MAYBE_DOTNETCORE@ @MAYBE_NODETS@
 CROSS_LANGS_COMMA_SEPARATED = $(subst $(space),$(comma),$(CROSS_LANGS))
 
-cross: precross
-	$(PYTHON) test/test.py -s --server $(CROSS_LANGS_COMMA_SEPARATED) --client $(CROSS_LANGS_COMMA_SEPARATED)
+if WITH_PY3
+CROSS_PY=$(PYTHON3)
+else
+CROSS_PY=$(PYTHON)
+endif
+
+if WITH_PYTHON
+crossfeature: precross
+	$(CROSS_PY) test/test.py --retry-count 5 --features .* --skip-known-failures --server $(CROSS_LANGS_COMMA_SEPARATED)
+else
+# feature test needs python build
+crossfeature:
+endif
+
+cross-%: precross crossfeature
+	$(CROSS_PY) test/test.py --retry-count 5 --skip-known-failures --server $(CROSS_LANGS_COMMA_SEPARATED) --client $(CROSS_LANGS_COMMA_SEPARATED) --regex "$*"
+
+cross: cross-.*
 
 TIMES = 1 2 3
 fail: precross
-	$(PYTHON) test/test.py || true
-	$(PYTHON) test/test.py --update-expected-failures=overwrite
+	$(CROSS_PY) test/test.py || true
+	$(CROSS_PY) test/test.py --update-expected-failures=overwrite
 	$(foreach var,$(TIMES),test/test.py -s || true;test/test.py --update-expected-failures=merge;)
 
 codespell_skip_files = \
@@ -88,23 +133,30 @@ style-local:
 
 EXTRA_DIST = \
 	.clang-format \
+	.dockerignore \
 	.editorconfig \
 	.travis.yml \
+	.rustfmt.toml \
+	ApacheThrift.nuspec \
 	appveyor.yml \
+	bootstrap.sh \
 	bower.json \
 	build \
+	CHANGES.md \
 	CMakeLists.txt \
 	composer.json \
 	contrib \
 	CONTRIBUTING.md \
 	debian \
-	doc \
 	doap.rdf \
-	json-schema.json \
-	package.json \
-	rat_exclude \
-	sonar-project.properties \
+	doc \
+	dub.json \
+	jitpack.yml \
+	LANGUAGES.md \
 	LICENSE \
-	CHANGES \
 	NOTICE \
-	README.md
+	package.json \
+	phpcs.xml.dist \
+	README.md \
+	sonar-project.properties \
+	Thrift.podspec

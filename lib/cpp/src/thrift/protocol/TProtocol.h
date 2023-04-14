@@ -20,11 +20,15 @@
 #ifndef _THRIFT_PROTOCOL_TPROTOCOL_H_
 #define _THRIFT_PROTOCOL_TPROTOCOL_H_ 1
 
+#ifdef _WIN32
+// Need to come before any Windows.h includes
+#include <Winsock2.h>
+#endif
+
 #include <thrift/transport/TTransport.h>
 #include <thrift/protocol/TProtocolException.h>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/static_assert.hpp>
+#include <memory>
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -43,7 +47,7 @@
 // http://cellperformance.beyond3d.com/articles/2006/06/understanding-strict-aliasing.html
 template <typename To, typename From>
 static inline To bitwise_cast(From from) {
-  BOOST_STATIC_ASSERT(sizeof(From) == sizeof(To));
+  static_assert(sizeof(From) == sizeof(To), "sizeof(From) == sizeof(To)");
 
   // BAD!!!  These are all broken with -O2.
   //return *reinterpret_cast<To*>(&from);  // BAD!!!
@@ -84,15 +88,18 @@ static inline To bitwise_cast(From from) {
 #  define __THRIFT_LITTLE_ENDIAN LITTLE_ENDIAN
 #  define __THRIFT_BIG_ENDIAN BIG_ENDIAN
 # else
-#  include <boost/config.hpp>
-#  include <boost/detail/endian.hpp>
-#  define __THRIFT_BYTE_ORDER BOOST_BYTE_ORDER
+#  include <boost/predef/other/endian.h>
+#  if BOOST_ENDIAN_BIG_BYTE
+#    define __THRIFT_BYTE_ORDER 4321
+#    define __THRIFT_LITTLE_ENDIAN 0
+#    define __THRIFT_BIG_ENDIAN __THRIFT_BYTE_ORDER
+#  elif BOOST_ENDIAN_LITTLE_BYTE
+#    define __THRIFT_BYTE_ORDER 1234
+#    define __THRIFT_LITTLE_ENDIAN __THRIFT_BYTE_ORDER
+#    define __THRIFT_BIG_ENDIAN 0
+#  endif
 #  ifdef BOOST_LITTLE_ENDIAN
-#   define __THRIFT_LITTLE_ENDIAN __THRIFT_BYTE_ORDER
-#   define __THRIFT_BIG_ENDIAN 0
 #  else
-#   define __THRIFT_LITTLE_ENDIAN 0
-#   define __THRIFT_BIG_ENDIAN __THRIFT_BYTE_ORDER
 #  endif
 # endif
 #endif
@@ -545,12 +552,12 @@ public:
   }
   virtual uint32_t skip_virt(TType type);
 
-  inline boost::shared_ptr<TTransport> getTransport() { return ptrans_; }
+  inline std::shared_ptr<TTransport> getTransport() { return ptrans_; }
 
   // TODO: remove these two calls, they are for backwards
   // compatibility
-  inline boost::shared_ptr<TTransport> getInputTransport() { return ptrans_; }
-  inline boost::shared_ptr<TTransport> getOutputTransport() { return ptrans_; }
+  inline std::shared_ptr<TTransport> getInputTransport() { return ptrans_; }
+  inline std::shared_ptr<TTransport> getOutputTransport() { return ptrans_; }
 
   // input and output recursion depth are kept separate so that one protocol
   // can be used concurrently for both input and output.
@@ -572,14 +579,14 @@ public:
   void setRecurisionLimit(uint32_t depth) {recursion_limit_ = depth;}
 
 protected:
-  TProtocol(boost::shared_ptr<TTransport> ptrans)
+  TProtocol(std::shared_ptr<TTransport> ptrans)
     : ptrans_(ptrans), input_recursion_depth_(0), output_recursion_depth_(0), recursion_limit_(DEFAULT_RECURSION_LIMIT)
   {}
 
-  boost::shared_ptr<TTransport> ptrans_;
+  std::shared_ptr<TTransport> ptrans_;
 
 private:
-  TProtocol() {}
+  TProtocol() = default;
   uint32_t input_recursion_depth_;
   uint32_t output_recursion_depth_;
   uint32_t recursion_limit_;
@@ -590,11 +597,16 @@ private:
  */
 class TProtocolFactory {
 public:
-  TProtocolFactory() {}
+  TProtocolFactory() = default;
 
   virtual ~TProtocolFactory();
 
-  virtual boost::shared_ptr<TProtocol> getProtocol(boost::shared_ptr<TTransport> trans) = 0;
+  virtual std::shared_ptr<TProtocol> getProtocol(std::shared_ptr<TTransport> trans) = 0;
+  virtual std::shared_ptr<TProtocol> getProtocol(std::shared_ptr<TTransport> inTrans,
+               std::shared_ptr<TTransport> outTrans) {
+    (void)outTrans;
+    return getProtocol(inTrans);
+  }
 };
 
 /**
@@ -662,7 +674,7 @@ uint32_t skip(Protocol_& prot, TType type) {
     return prot.readBool(boolv);
   }
   case T_BYTE: {
-    int8_t bytev;
+    int8_t bytev = 0;
     return prot.readByte(bytev);
   }
   case T_I16: {
@@ -737,14 +749,12 @@ uint32_t skip(Protocol_& prot, TType type) {
     result += prot.readListEnd();
     return result;
   }
-  case T_STOP:
-  case T_VOID:
-  case T_U64:
-  case T_UTF8:
-  case T_UTF16:
+  default:
     break;
   }
-  return 0;
+
+  throw TProtocolException(TProtocolException::INVALID_DATA,
+                           "invalid TType");
 }
 
 }}} // apache::thrift::protocol

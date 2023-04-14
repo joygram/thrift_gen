@@ -22,33 +22,33 @@
 #include <sstream>
 #include <boost/algorithm/string.hpp>
 
+#include <thrift/config.h>
 #include <thrift/transport/THttpClient.h>
 #include <thrift/transport/TSocket.h>
+
+using std::string;
 
 namespace apache {
 namespace thrift {
 namespace transport {
 
-using namespace std;
-
-THttpClient::THttpClient(boost::shared_ptr<TTransport> transport,
+THttpClient::THttpClient(std::shared_ptr<TTransport> transport,
                          std::string host,
                          std::string path)
   : THttpTransport(transport), host_(host), path_(path) {
 }
 
 THttpClient::THttpClient(string host, int port, string path)
-  : THttpTransport(boost::shared_ptr<TTransport>(new TSocket(host, port))),
+  : THttpTransport(std::shared_ptr<TTransport>(new TSocket(host, port))),
     host_(host),
     path_(path) {
 }
 
-THttpClient::~THttpClient() {
-}
+THttpClient::~THttpClient() = default;
 
 void THttpClient::parseHeader(char* header) {
   char* colon = strchr(header, ':');
-  if (colon == NULL) {
+  if (colon == nullptr) {
     return;
   }
   char* value = colon + 1;
@@ -67,7 +67,7 @@ bool THttpClient::parseStatusLine(char* status) {
   char* http = status;
 
   char* code = strchr(http, ' ');
-  if (code == NULL) {
+  if (code == nullptr) {
     throw TTransportException(string("Bad Status: ") + status);
   }
 
@@ -76,7 +76,7 @@ bool THttpClient::parseStatusLine(char* status) {
   };
 
   char* msg = strchr(code, ' ');
-  if (msg == NULL) {
+  if (msg == nullptr) {
     throw TTransportException(string("Bad Status: ") + status);
   }
   *msg = '\0';
@@ -102,7 +102,7 @@ void THttpClient::flush() {
   std::ostringstream h;
   h << "POST " << path_ << " HTTP/1.1" << CRLF << "Host: " << host_ << CRLF
     << "Content-Type: application/x-thrift" << CRLF << "Content-Length: " << len << CRLF
-    << "Accept: application/x-thrift" << CRLF << "User-Agent: Thrift/" << VERSION
+    << "Accept: application/x-thrift" << CRLF << "User-Agent: Thrift/" << PACKAGE_VERSION
     << " (C++/THttpClient)" << CRLF << CRLF;
   string header = h.str();
 

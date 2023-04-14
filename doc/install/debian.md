@@ -1,21 +1,27 @@
-## Debian or Ubuntu setup
-The following command install all the required tools and libraries to build and install the Apache Thrift compiler on a Debian/Ubuntu Linux based system.
+## Debian/Ubuntu install
+The following command will install tools and libraries required to build and install the Apache Thrift compiler and C++ libraries on a Debian/Ubuntu Linux based system.
 
-	sudo apt-get install libboost-dev libboost-test-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev ant
+	sudo apt-get install automake bison flex g++ git libboost-all-dev libevent-dev libssl-dev libtool make pkg-config
 
-Then install the Java JDK of your choice. Type **javac** to see a list of available packages, pick the one you prefer and **apt-get install** it.
+Debian 7/Ubuntu 12 users need to manually install a more recent version of automake and (for C++ library and test support) boost:
 
-Debian stable users need to manually install a more recent automake version:
+    wget http://ftp.debian.org/debian/pool/main/a/automake-1.15/automake_1.15-3_all.deb
+    sudo dpkg -i automake_1.15-3_all.deb
 
-    wget http://ftp.debian.org/debian/pool/main/a/automake-1.14/automake_1.14.1-3_all.deb
-    sudo dpkg -i automake_1.14.1-3_all.deb
+    wget http://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz                                                                      tar xvf boost_1_60_0.tar.gz
+    cd boost_1_60_0
+    ./bootstrap.sh
+    sudo ./b2 install
 
 ## Optional packages
 
-Some other packages depend on what languages you want Thrift to support.
+If you would like to build Apache Thrift libraries for other programming languages you may need to install additional packages. The following languages require the specified additional packages:
 
- * Ruby 
-	* ruby-full ruby-dev ruby-rspec rake rubygems libdaemons-ruby libgemplugin-ruby mongrel
+ * Java
+	* packages: ant  
+	* You will also need Java JDK v1.8 or higher. Type **javac** to see a list of available packages, pick the one you prefer and **apt-get install** it (e.g. default-jdk).
+ * Ruby
+	* ruby-full ruby-dev ruby-rspec rake rubygems bundler
  * Python
 	* python-all python-all-dev python-all-dbg
  * Perl
@@ -25,14 +31,29 @@ Some other packages depend on what languages you want Thrift to support.
  * C_glib
 	* libglib2.0-dev
  * Erlang
-	* erlang-base erlang-eunit erlang-dev
+	* erlang-base erlang-eunit erlang-dev rebar
  * Csharp
 	* mono-gmcs mono-devel libmono-system-web2.0-cil nunit nunit-console
  * Haskell
-	* ghc6 cabal-install libghc6-binary-dev libghc6-network-dev libghc6-http-dev
+	* ghc cabal-install libghc-binary-dev libghc-network-dev libghc-http-dev
  * Thrift Compiler for Windows
-	* mingw32 mingw32-binutils mingw32-runtime nsis
-
+	* mingw-w64 mingw-w64-x86-64-dev nsis
+ * Rust
+	* rustc cargo
+ * Haxe
+	* haxe
+ * Lua
+    * lua5.3 liblua5.3-dev
+ * NodeJs
+    * nodejs npm
+ * dotnetcore
+    * https://www.microsoft.com/net/learn/get-started/linuxubuntu
+ * d-lang
+    * curl -fsS https://dlang.org/install.sh | bash -s dmd
+ * dart & pub
+    * https://www.dartlang.org/install/linux
+    * https://www.dartlang.org/tools/pub/installing
+	
 
 ## Additional reading
 

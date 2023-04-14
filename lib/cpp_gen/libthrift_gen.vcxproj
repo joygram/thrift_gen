@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup Label="ProjectConfigurations">
+		<ProjectConfiguration Include="Debug-mt|Win32">
+			<Configuration>Debug-mt</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="Debug-mt|x64">
+			<Configuration>Debug-mt</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="Debug|Win32">
+			<Configuration>Debug</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="Debug|x64">
+			<Configuration>Debug</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="Release-mt|Win32">
+			<Configuration>Release-mt</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="Release-mt|x64">
+			<Configuration>Release-mt</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v100|Win32">
+			<Configuration>v100</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v100|x64">
+			<Configuration>v100</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v140|Win32">
+			<Configuration>v140</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v140|x64">
+			<Configuration>v140</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v141|Win32">
+			<Configuration>v141</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v141|x64">
+			<Configuration>v141</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v142|Win32">
+			<Configuration>v142</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v142|x64">
+			<Configuration>v142</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v143|Win32">
+			<Configuration>v143</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v143|x64">
+			<Configuration>v143</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v90|Win32">
+			<Configuration>v90</Configuration>
+			<Platform>Win32</Platform>
+		</ProjectConfiguration>
+		<ProjectConfiguration Include="v90|x64">
+			<Configuration>v90</Configuration>
+			<Platform>x64</Platform>
+		</ProjectConfiguration>
+	</ItemGroup>
+	<ItemGroup>
+		<ClCompile Include="src\thrift\concurrency\BoostMonitor.cpp" />
+		<ClCompile Include="src\thrift\concurrency\BoostMutex.cpp" />
+		<ClCompile Include="src\thrift\concurrency\BoostThreadFactory.cpp" />
+		<ClCompile Include="src\thrift\concurrency\ThreadManager.cpp" />
+		<ClCompile Include="src\thrift\concurrency\TimerManager.cpp" />
+		<ClCompile Include="src\thrift\concurrency\Util.cpp" />
+		<ClCompile Include="src\thrift\processor\PeekProcessor.cpp" />
+		<ClCompile Include="src\thrift\protocol\TBase64Utils.cpp" />
+		<ClCompile Include="src\thrift\protocol\TDebugProtocol.cpp" />
+		<ClCompile Include="src\thrift\protocol\TJSONProtocol.cpp" />
+		<ClCompile Include="src\thrift\protocol\TProtocol.cpp" />
+		<ClCompile Include="src\thrift\protocol\TMultiplexedProtocol.cpp" />
+		<ClCompile Include="src\thrift\TApplicationException.cpp" />
+		<ClCompile Include="src\thrift\TOutput.cpp" />
+		<ClCompile Include="src\thrift\transport\TBufferTransports.cpp" />
+		<ClCompile Include="src\thrift\transport\TFDTransport.cpp" />
+		<ClCompile Include="src\thrift\transport\TSimpleFileTransport.cpp" />
+		<ClCompile Include="src\thrift\transport\TFileTransport.cpp" />
+		<ClCompile Include="src\thrift\transport\TTransportException.cpp" />
+		<ClCompile Include="src\thrift\transport\TTransportUtils.cpp" />
+		<ClCompile Include="src\thrift\windows\GetTimeOfDay.cpp" />
+		<ClCompile Include="src\thrift\windows\SocketPair.cpp" />
+	</ItemGroup>
+	<ItemGroup>
+		<ClInclude Include="src\thrift\concurrency\BoostThreadFactory.h" />
+		<ClInclude Include="src\thrift\concurrency\Exception.h" />
+		<ClInclude Include="src\thrift\concurrency\PlatformThreadFactory.h" />
+		<ClInclude Include="src\thrift\concurrency\Thread.h" />
+		<ClInclude Include="src\thrift\processor\PeekProcessor.h" />
+		<ClInclude Include="src\thrift\processor\TMultiplexedProcessor.h" />
+		<ClInclude Include="src\thrift\protocol\TBinaryProtocol.h" />
+		<ClInclude Include="src\thrift\protocol\TDebugProtocol.h" />
+		<ClInclude Include="src\thrift\protocol\TJSONProtocol.h" />
+		<ClInclude Include="src\thrift\protocol\TMultiplexedProtocol.h" />
+		<ClInclude Include="src\thrift\protocol\TProtocol.h" />
+		<ClInclude Include="src\thrift\protocol\TVirtualProtocol.h" />
+		<ClInclude Include="src\thrift\TApplicationException.h" />
+		<ClInclude Include="src\thrift\Thrift.h" />
+		<ClInclude Include="src\thrift\TOutput.h" />
+		<ClInclude Include="src\thrift\TProcessor.h" />
+		<ClInclude Include="src\thrift\transport\TBufferTransports.h" />
+		<ClInclude Include="src\thrift\transport\TFDTransport.h" />
+		<ClInclude Include="src\thrift\transport\TFileTransport.h" />
+		<ClInclude Include="src\thrift\transport\TSimpleFileTransport.h" />
+		<ClInclude Include="src\thrift\transport\TTransport.h" />
+		<ClInclude Include="src\thrift\transport\TTransportException.h" />
+		<ClInclude Include="src\thrift\transport\TTransportUtils.h" />
+		<ClInclude Include="src\thrift\transport\TVirtualTransport.h" />
+		<ClInclude Include="src\thrift\windows\config.h" />
+		<ClInclude Include="src\thrift\windows\GetTimeOfDay.h" />
+		<ClInclude Include="src\thrift\windows\Operators.h" />
+		<ClInclude Include="src\thrift\windows\SocketPair.h" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="src\thrift\protocol\TBinaryProtocol.tcc" />
+	</ItemGroup>
+	<PropertyGroup Label="Globals">
+		<ProjectGuid>{DD26F57E-60F2-4F37-A616-D219A9BF338F}</ProjectGuid>
+		<Keyword>Win32Proj</Keyword>
+		<RootNamespace>thrift</RootNamespace>
+		<ProjectName>libthrift_gen</ProjectName>
+		<WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+	</PropertyGroup>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v140|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v100|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v141|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v142|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v143|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v90|Win32'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<CharacterSet>MultiByte</CharacterSet>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v140|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v100|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v141|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v142|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v143|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v90|x64'" Label="Configuration">
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+		<UseDebugLibraries>false</UseDebugLibraries>
+		<WholeProgramOptimization>true</WholeProgramOptimization>
+		<CharacterSet>MultiByte</CharacterSet>
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-mt|x64'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-mt|Win32'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-mt|Win32'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-mt|x64'">
+		<PlatformToolset>v143</PlatformToolset>
+	</PropertyGroup>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+	<ImportGroup Label="ExtensionSettings"></ImportGroup>
+	<ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='v140|Win32'">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v100|Win32'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v141|Win32'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v142|Win32'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v143|Win32'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v90|Win32'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v140|x64'" Label="PropertySheets">
+		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v100|x64'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v141|x64'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v142|x64'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v143|x64'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<ImportGroup Condition="'$(Configuration)|$(Platform)'=='v90|x64'" Label="PropertySheets">
+		<Import Project="..\..\..\..\propertysheet\build_3rdparty_release_r03.props" />
+	</ImportGroup>
+	<PropertyGroup Label="UserMacros" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v140|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v100|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v141|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v142|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v143|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v90|Win32'" />
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='v140|x64'" />
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v140|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v100|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v141|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v142|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v143|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v90|Win32'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;./src/Thrift;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v140|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v100|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v141|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v142|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v143|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='v90|x64'">
+		<ClCompile>
+			<WarningLevel>Level3</WarningLevel>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<Optimization>MaxSpeed</Optimization>
+			<IntrinsicFunctions>true</IntrinsicFunctions>
+			<PreprocessorDefinitions>HAVE_CONFIG_H=1;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<FunctionLevelLinking>true</FunctionLevelLinking>
+			<WholeProgramOptimization>false</WholeProgramOptimization>
+			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+			<AdditionalIncludeDirectories>./src;./src/Thrift;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		</ClCompile>
+		<Link>
+			<SubSystem>Windows</SubSystem>
+			<GenerateDebugInformation>true</GenerateDebugInformation>
+			<EnableCOMDATFolding>true</EnableCOMDATFolding>
+			<OptimizeReferences>true</OptimizeReferences>
+		</Link>
+		<Lib />
+		<Lib>
+			<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+		</Lib>
+	</ItemDefinitionGroup>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+	<ImportGroup Label="ExtensionTargets"></ImportGroup>
+</Project>

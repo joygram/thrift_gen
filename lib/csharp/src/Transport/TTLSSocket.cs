@@ -33,48 +33,53 @@ namespace Thrift.Transport
         /// <summary>
         /// Internal TCP Client
         /// </summary>
-        private TcpClient client = null;
+        private TcpClient client;
 
         /// <summary>
         /// The host
         /// </summary>
-        private string host = null;
+        private string host;
 
         /// <summary>
         /// The port
         /// </summary>
-        private int port = 0;
+        private int port;
 
         /// <summary>
         /// The timeout for the connection
         /// </summary>
-        private int timeout = 0;
+        private int timeout;
 
         /// <summary>
         /// Internal SSL Stream for IO
         /// </summary>
-        private SslStream secureStream = null;
+        private SslStream secureStream;
 
         /// <summary>
         /// Defines wheter or not this socket is a server socket<br/>
         /// This is used for the TLS-authentication
         /// </summary>
-        private bool isServer = false;
+        private bool isServer;
 
         /// <summary>
         /// The certificate
         /// </summary>
-        private X509Certificate certificate = null;
+        private X509Certificate certificate;
 
         /// <summary>
         /// User defined certificate validator.
         /// </summary>
-        private RemoteCertificateValidationCallback certValidator = null;
+        private RemoteCertificateValidationCallback certValidator;
 
         /// <summary>
         /// The function to determine which certificate to use.
         /// </summary>
         private LocalCertificateSelectionCallback localCertificateSelectionCallback;
+
+        /// <summary>
+        /// The SslProtocols value that represents the protocol used for authentication.SSL protocols to be used.
+        /// </summary>
+        private readonly SslProtocols sslProtocols;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TTLSSocket"/> class.
@@ -84,18 +89,26 @@ namespace Thrift.Transport
         /// <param name="isServer">if set to <c>true</c> [is server].</param>
         /// <param name="certValidator">User defined cert validator.</param>
         /// <param name="localCertificateSelectionCallback">The callback to select which certificate to use.</param>
+        /// <param name="sslProtocols">The SslProtocols value that represents the protocol used for authentication.</param>
         public TTLSSocket(
             TcpClient client,
             X509Certificate certificate,
             bool isServer = false,
             RemoteCertificateValidationCallback certValidator = null,
-            LocalCertificateSelectionCallback localCertificateSelectionCallback = null)
+            LocalCertificateSelectionCallback localCertificateSelectionCallback = null,
+            // TODO: Enable Tls11 and Tls12 (TLS 1.1 and 1.2) by default once we start using .NET 4.5+.
+            SslProtocols sslProtocols = SslProtocols.Tls)
         {
             this.client = client;
             this.certificate = certificate;
             this.certValidator = certValidator;
             this.localCertificateSelectionCallback = localCertificateSelectionCallback;
+            this.sslProtocols = sslProtocols;
             this.isServer = isServer;
+            if (isServer && certificate == null)
+            {
+                throw new ArgumentException("TTLSSocket needs certificate to be used for server", "certificate");
+            }
 
             if (IsOpen)
             {
@@ -112,13 +125,15 @@ namespace Thrift.Transport
         /// <param name="certificatePath">The certificate path.</param>
         /// <param name="certValidator">User defined cert validator.</param>
         /// <param name="localCertificateSelectionCallback">The callback to select which certificate to use.</param>
+        /// <param name="sslProtocols">The SslProtocols value that represents the protocol used for authentication.</param>
         public TTLSSocket(
             string host,
             int port,
             string certificatePath,
             RemoteCertificateValidationCallback certValidator = null,
-            LocalCertificateSelectionCallback localCertificateSelectionCallback = null)
-            : this(host, port, 0, X509Certificate.CreateFromCertFile(certificatePath), certValidator, localCertificateSelectionCallback)
+            LocalCertificateSelectionCallback localCertificateSelectionCallback = null,
+            SslProtocols sslProtocols = SslProtocols.Tls)
+            : this(host, port, 0, X509Certificate.CreateFromCertFile(certificatePath), certValidator, localCertificateSelectionCallback, sslProtocols)
         {
         }
 
@@ -130,13 +145,15 @@ namespace Thrift.Transport
         /// <param name="certificate">The certificate.</param>
         /// <param name="certValidator">User defined cert validator.</param>
         /// <param name="localCertificateSelectionCallback">The callback to select which certificate to use.</param>
+        /// <param name="sslProtocols">The SslProtocols value that represents the protocol used for authentication.</param>
         public TTLSSocket(
             string host,
             int port,
-            X509Certificate certificate,
+            X509Certificate certificate = null,
             RemoteCertificateValidationCallback certValidator = null,
-            LocalCertificateSelectionCallback localCertificateSelectionCallback = null)
-            : this(host, port, 0, certificate, certValidator, localCertificateSelectionCallback)
+            LocalCertificateSelectionCallback localCertificateSelectionCallback = null,
+            SslProtocols sslProtocols = SslProtocols.Tls)
+            : this(host, port, 0, certificate, certValidator, localCertificateSelectionCallback, sslProtocols)
         {
         }
 
@@ -149,13 +166,15 @@ namespace Thrift.Transport
         /// <param name="certificate">The certificate.</param>
         /// <param name="certValidator">User defined cert validator.</param>
         /// <param name="localCertificateSelectionCallback">The callback to select which certificate to use.</param>
+        /// <param name="sslProtocols">The SslProtocols value that represents the protocol used for authentication.</param>
         public TTLSSocket(
             string host,
             int port,
             int timeout,
             X509Certificate certificate,
             RemoteCertificateValidationCallback certValidator = null,
-            LocalCertificateSelectionCallback localCertificateSelectionCallback = null)
+            LocalCertificateSelectionCallback localCertificateSelectionCallback = null,
+            SslProtocols sslProtocols = SslProtocols.Tls)
         {
             this.host = host;
             this.port = port;
@@ -163,6 +182,7 @@ namespace Thrift.Transport
             this.certificate = certificate;
             this.certValidator = certValidator;
             this.localCertificateSelectionCallback = localCertificateSelectionCallback;
+            this.sslProtocols = sslProtocols;
 
             InitSocket();
         }
@@ -172,7 +192,7 @@ namespace Thrift.Transport
         /// </summary>
         private void InitSocket()
         {
-            this.client = new TcpClient();
+            client = TSocketVersionizer.CreateTcpClient();
             client.ReceiveTimeout = client.SendTimeout = timeout;
             client.Client.NoDelay = true;
         }
@@ -243,7 +263,7 @@ namespace Thrift.Transport
         /// <param name="sender">The sender-object.</param>
         /// <param name="certificate">The used certificate.</param>
         /// <param name="chain">The certificate chain.</param>
-        /// <param name="sslPolicyErrors">An enum, which lists all the errors from the .NET certificate check.</param>
+        /// <param name="sslValidationErrors">An enum, which lists all the errors from the .NET certificate check.</param>
         /// <returns></returns>
         private bool DefaultCertificateValidator(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslValidationErrors)
         {
@@ -260,7 +280,7 @@ namespace Thrift.Transport
                 throw new TTransportException(TTransportException.ExceptionType.AlreadyOpen, "Socket already connected");
             }
 
-            if (String.IsNullOrEmpty(host))
+            if (string.IsNullOrEmpty(host))
             {
                 throw new TTransportException(TTransportException.ExceptionType.NotOpen, "Cannot open null host");
             }
@@ -275,7 +295,33 @@ namespace Thrift.Transport
                 InitSocket();
             }
 
-            client.Connect(host, port);
+            if (timeout == 0)            // no timeout -> infinite
+            {
+                client.Connect(host, port);
+            }
+            else                        // we have a timeout -> use it
+            {
+                ConnectHelper hlp = new ConnectHelper(client);
+                IAsyncResult asyncres = client.BeginConnect(host, port, new AsyncCallback(ConnectCallback), hlp);
+                bool bConnected = asyncres.AsyncWaitHandle.WaitOne(timeout) && client.Connected;
+                if (!bConnected)
+                {
+                    lock (hlp.Mutex)
+                    {
+                        if (hlp.CallbackDone)
+                        {
+                            asyncres.AsyncWaitHandle.Close();
+                            client.Close();
+                        }
+                        else
+                        {
+                            hlp.DoCleanup = true;
+                            client = null;
+                        }
+                    }
+                    throw new TTransportException(TTransportException.ExceptionType.TimedOut, "Connect timed out");
+                }
+            }
 
             setupTLS();
         }
@@ -286,8 +332,8 @@ namespace Thrift.Transport
         public void setupTLS()
         {
             RemoteCertificateValidationCallback validator = this.certValidator ?? DefaultCertificateValidator;
-            
-            if( this.localCertificateSelectionCallback != null)
+
+            if (this.localCertificateSelectionCallback != null)
             {
                 this.secureStream = new SslStream(
                     this.client.GetStream(),
@@ -304,18 +350,19 @@ namespace Thrift.Transport
                     validator
                 );
             }
-            
+
             try
             {
                 if (isServer)
                 {
                     // Server authentication
-                    this.secureStream.AuthenticateAsServer(this.certificate, this.certValidator != null, SslProtocols.Tls, true);
+                    this.secureStream.AuthenticateAsServer(this.certificate, this.certValidator != null, sslProtocols, true);
                 }
                 else
                 {
                     // Client authentication
-                    this.secureStream.AuthenticateAsClient(host, new X509CertificateCollection { certificate }, SslProtocols.Tls, true);
+                    X509CertificateCollection certs = certificate != null ? new X509CertificateCollection { certificate } : new X509CertificateCollection();
+                    this.secureStream.AuthenticateAsClient(host, certs, sslProtocols, true);
                 }
             }
             catch (Exception)
@@ -326,6 +373,54 @@ namespace Thrift.Transport
 
             inputStream = this.secureStream;
             outputStream = this.secureStream;
+        }
+        
+        static void ConnectCallback(IAsyncResult asyncres)
+        {
+            ConnectHelper hlp = asyncres.AsyncState as ConnectHelper;
+            lock (hlp.Mutex)
+            {
+                hlp.CallbackDone = true;
+
+                try
+                {
+                    if (hlp.Client.Client != null)
+                        hlp.Client.EndConnect(asyncres);
+                }
+                catch (Exception)
+                {
+                    // catch that away
+                }
+
+                if (hlp.DoCleanup)
+                {
+                    try
+                    {
+                        asyncres.AsyncWaitHandle.Close();
+                    }
+                    catch (Exception) { }
+
+                    try
+                    {
+                        if (hlp.Client is IDisposable)
+                            ((IDisposable)hlp.Client).Dispose();
+                    }
+                    catch (Exception) { }
+                    hlp.Client = null;
+                }
+            }
+        }
+
+        private class ConnectHelper
+        {
+            public object Mutex = new object();
+            public bool DoCleanup = false;
+            public bool CallbackDone = false;
+            public TcpClient Client;
+            public ConnectHelper(TcpClient client)
+            {
+                Client = client;
+            }
         }
 
         /// <summary>

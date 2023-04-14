@@ -36,19 +36,23 @@ BUILT_SOURCES = \
         gen-c_glib/t_test_thrift_test.h \
         gen-c_glib/t_test_thrift_test_types.h
 
-AM_CPPFLAGS = -I../src
-AM_CFLAGS = -g -Wall -Wextra -pedantic $(GLIB_CFLAGS) $(GOBJECT_CFLAGS) \
+AM_CPPFLAGS = -I../src -I./gen-c_glib
+AM_CFLAGS = -g -Wall -Wextra -pedantic $(GLIB_CFLAGS) $(GOBJECT_CFLAGS) $(OPENSSL_INCLUDES) \
 	@GCOV_CFLAGS@
 AM_CXXFLAGS = $(AM_CFLAGS)
-AM_LDFLAGS = $(GLIB_LIBS) $(GOBJECT_LIBS) @GCOV_LDFLAGS@
+AM_LDFLAGS = $(GLIB_LIBS) $(GOBJECT_LIBS) $(OPENSSL_LIBS) @GCOV_LDFLAGS@
 
 check_PROGRAMS = \
+  testserialization \
   testapplicationexception \
   testcontainertest \
   testtransportsocket \
+  testtransportsslsocket \
   testbinaryprotocol \
+  testcompactprotocol \
   testbufferedtransport \
   testframedtransport \
+  testfdtransport \
   testmemorybuffer \
   teststruct \
   testsimpleserver \
@@ -60,6 +64,12 @@ if WITH_CPP
   BUILT_SOURCES += gen-cpp/ThriftTest_types.cpp
   check_PROGRAMS += testthrifttestclient
 endif
+
+testserialization_SOURCES = testserialization.c
+testserialization_LDADD = \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/protocol/libthrift_c_glib_la-thrift_protocol.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_transport.o \
+    libtestgenc.la
 
 testapplicationexception_SOURCES = testapplicationexception.c
 testapplicationexception_LDADD = \
@@ -91,10 +101,30 @@ testtransportsocket_LDADD = \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_transport.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_socket.o
 
+
+testtransportsslsocket_SOURCES = testtransportsslsocket.c
+testtransportsslsocket_LDADD = \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_socket.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_buffered_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_socket.o
+
+
 testbinaryprotocol_SOURCES = testbinaryprotocol.c
 testbinaryprotocol_LDADD = \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/protocol/libthrift_c_glib_la-thrift_protocol.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_framed_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_socket.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_socket.o
+
+testcompactprotocol_SOURCES = testcompactprotocol.c
+testcompactprotocol_LDADD = \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/protocol/libthrift_c_glib_la-thrift_protocol.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_framed_transport.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_socket.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_transport.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_socket.o
@@ -112,6 +142,11 @@ testframedtransport_LDADD = \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_socket.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_transport.o \
     $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_server_socket.o
+
+testfdtransport_SOURCES = testfdtransport.c
+testfdtransport_LDADD = \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_transport.o \
+    $(top_builddir)/lib/c_glib/src/thrift/c_glib/transport/libthrift_c_glib_la-thrift_fd_transport.o
 
 testmemorybuffer_SOURCES = testmemorybuffer.c
 testmemorybuffer_LDADD = \
@@ -146,7 +181,9 @@ testoptionalrequired_LDADD = \
     libtestgenc.la
 
 testthrifttest_SOURCES = testthrifttest.c
-testthrifttest_LDADD = libtestgenc.la
+testthrifttest_LDADD = libtestgenc.la \
+    $(top_builddir)/test/c_glib/src/thrift_test_handler.o
+testthrifttest_CFLAGS = -I$(top_srcdir)/test/c_glib/src -I./gen-c_glib $(GLIB_CFLAGS)
 
 testthrifttestclient_SOURCES = testthrifttestclient.cpp
 testthrifttestclient_CPPFLAGS = -I../../cpp/src $(BOOST_CPPFLAGS) -I./gen-cpp -I../src -I./gen-c_glib $(GLIB_CFLAGS)
@@ -162,6 +199,8 @@ endif
 nodist_libtestgenc_la_SOURCES = \
         gen-c_glib/t_test_container_test_types.c \
         gen-c_glib/t_test_debug_proto_test_types.c \
+        gen-c_glib/t_test_enum_test_types.c \
+        gen-c_glib/t_test_enum_test_service.c \
         gen-c_glib/t_test_empty_service.c \
         gen-c_glib/t_test_inherited.c \
         gen-c_glib/t_test_optional_required_test_types.c \
@@ -174,6 +213,8 @@ nodist_libtestgenc_la_SOURCES = \
         gen-c_glib/t_test_thrift_test_types.c \
         gen-c_glib/t_test_container_test_types.h \
         gen-c_glib/t_test_debug_proto_test_types.h \
+        gen-c_glib/t_test_enum_test_types.h \
+        gen-c_glib/t_test_enum_test_service.h \
         gen-c_glib/t_test_empty_service.h \
         gen-c_glib/t_test_inherited.h \
         gen-c_glib/t_test_optional_required_test_types.h \
@@ -196,21 +237,22 @@ nodist_libtestgencpp_la_SOURCES = \
         gen-cpp/ThriftTest_types.h
 libtestgencpp_la_CPPFLAGS = -I../../cpp/src $(BOOST_CPPFLAGS) -I./gen-cpp
 
-THRIFT = $(top_builddir)/compiler/cpp/thrift
-
-gen-c_glib/t_test_container_test_types.c gen-c_glib/t_test_container_test_types.h gen-c_glib/t_test_container_service.c gen-c_glib/t_test_container_service.h: ContainerTest.thrift
+gen-c_glib/t_test_container_test_types.c gen-c_glib/t_test_container_test_types.h gen-c_glib/t_test_container_service.c gen-c_glib/t_test_container_service.h: ContainerTest.thrift $(THRIFT)
 	$(THRIFT) --gen c_glib $<
 
-gen-c_glib/t_test_debug_proto_test_types.c gen-c_glib/t_test_debug_proto_test_types.h gen-c_glib/t_test_empty_service.c gen-c_glib/t_test_empty_service.h gen-c_glib/t_test_inherited.c gen-c_glib/t_test_inherited.h gen-c_glib/t_test_reverse_order_service.c gen-c_glib/t_test_reverse_order_service.h gen-c_glib/t_test_service_for_exception_with_a_map.c gen-c_glib/t_test_service_for_exception_with_a_map.h gen-c_glib/t_test_srv.c gen-c_glib/t_test_srv.h: ../../../test/DebugProtoTest.thrift
+gen-c_glib/t_test_debug_proto_test_types.c gen-c_glib/t_test_debug_proto_test_types.h gen-c_glib/t_test_empty_service.c gen-c_glib/t_test_empty_service.h gen-c_glib/t_test_inherited.c gen-c_glib/t_test_inherited.h gen-c_glib/t_test_reverse_order_service.c gen-c_glib/t_test_reverse_order_service.h gen-c_glib/t_test_service_for_exception_with_a_map.c gen-c_glib/t_test_service_for_exception_with_a_map.h gen-c_glib/t_test_srv.c gen-c_glib/t_test_srv.h: ../../../test/DebugProtoTest.thrift $(THRIFT)
 	$(THRIFT) --gen c_glib $<
 
-gen-c_glib/t_test_optional_required_test_types.c gen-c_glib/t_test_optional_required_test_types.h: ../../../test/OptionalRequiredTest.thrift
+gen-c_glib/t_test_enum_test_types.c gen-c_glib/t_test_enum_test_types.h gen-c_glib/t_test_enum_test_service.c gen-c_glib/t_test_enum_test_service.h : ../../../test/EnumTest.thrift $(THRIFT)
 	$(THRIFT) --gen c_glib $<
 
-gen-c_glib/t_test_second_service.c gen-c_glib/t_test_thrift_test.c gen-c_glib/t_test_thrift_test_types.c gen-c_glib/t_test_second_service.h gen-c_glib/t_test_thrift_test.h gen-c_glib/t_test_thrift_test_types.h: ../../../test/ThriftTest.thrift
+gen-c_glib/t_test_optional_required_test_types.c gen-c_glib/t_test_optional_required_test_types.h: ../../../test/OptionalRequiredTest.thrift $(THRIFT)
 	$(THRIFT) --gen c_glib $<
 
-gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/ThriftTest_types.cpp: ../../../test/ThriftTest.thrift
+gen-c_glib/t_test_second_service.c gen-c_glib/t_test_thrift_test.c gen-c_glib/t_test_thrift_test_types.c gen-c_glib/t_test_second_service.h gen-c_glib/t_test_thrift_test.h gen-c_glib/t_test_thrift_test_types.h: ../../../test/ThriftTest.thrift $(THRIFT)
+	$(THRIFT) --gen c_glib $<
+
+gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/ThriftTest_types.cpp: ../../../test/ThriftTest.thrift $(THRIFT)
 	$(THRIFT) --gen cpp $<
 
 TESTS = \

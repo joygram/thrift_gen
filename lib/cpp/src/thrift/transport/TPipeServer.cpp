@@ -22,7 +22,6 @@
 
 #include <thrift/transport/TPipe.h>
 #include <thrift/transport/TPipeServer.h>
-#include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
 #ifdef _WIN32
@@ -37,15 +36,14 @@ namespace transport {
 
 #ifdef _WIN32
 
-using namespace std;
-using boost::shared_ptr;
+using std::shared_ptr;
 
 class TPipeServerImpl : boost::noncopyable {
 public:
   TPipeServerImpl() {}
-  virtual ~TPipeServerImpl() = 0 {}
+  virtual ~TPipeServerImpl() {}
   virtual void interrupt() = 0;
-  virtual boost::shared_ptr<TTransport> acceptImpl() = 0;
+  virtual std::shared_ptr<TTransport> acceptImpl() = 0;
 
   virtual HANDLE getPipeHandle() = 0;
   virtual HANDLE getWrtPipeHandle() = 0;
@@ -76,7 +74,7 @@ public:
 
   virtual void interrupt() {} // not currently implemented
 
-  virtual boost::shared_ptr<TTransport> acceptImpl();
+  virtual std::shared_ptr<TTransport> acceptImpl();
 
   virtual HANDLE getPipeHandle() { return PipeR_.h; }
   virtual HANDLE getWrtPipeHandle() { return PipeW_.h; }
@@ -118,7 +116,7 @@ public:
     }
   }
 
-  virtual boost::shared_ptr<TTransport> acceptImpl();
+  virtual std::shared_ptr<TTransport> acceptImpl();
 
   virtual HANDLE getPipeHandle() { return Pipe_.h; }
   virtual HANDLE getWrtPipeHandle() { return INVALID_HANDLE_VALUE; }
@@ -142,7 +140,7 @@ private:
 
   TCriticalSection pipe_protect_;
   // only read or write these variables underneath a locked pipe_protect_
-  boost::shared_ptr<TPipe> cached_client_;
+  std::shared_ptr<TPipe> cached_client_;
   TAutoHandle Pipe_;
 };
 
@@ -297,6 +295,10 @@ shared_ptr<TTransport> TNamedPipeServer::acceptImpl() {
   // if we got here, then we are in an error / shutdown case
   DWORD gle = GetLastError(); // save error before doing cleanup
   GlobalOutput.perror("TPipeServer ConnectNamedPipe GLE=", gle);
+  if(gle == ERROR_OPERATION_ABORTED) {
+    TAutoCrit lock(pipe_protect_);    	// Needed to insure concurrent thread to be out of interrupt.
+    throw TTransportException(TTransportException::INTERRUPTED, "TPipeServer: server interupted");
+  }
   throw TTransportException(TTransportException::NOT_OPEN, "TPipeServer: client connection failed");
 }
 
@@ -331,8 +333,22 @@ bool TNamedPipeServer::createNamedPipe(const TAutoCrit & /*lockProof*/) {
   SetEntriesInAcl(1, &ea, NULL, &acl);
 
   PSECURITY_DESCRIPTOR sd = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
-  InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION);
-  SetSecurityDescriptorDacl(sd, TRUE, acl, FALSE);
+  if (!InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION)) {
+    auto lastError = GetLastError();
+    LocalFree(sd);
+    LocalFree(acl);
+    GlobalOutput.perror("TPipeServer::InitializeSecurityDescriptor() GLE=", lastError);
+    throw TTransportException(TTransportException::NOT_OPEN, "InitializeSecurityDescriptor() failed",
+                              lastError);
+  }
+  if (!SetSecurityDescriptorDacl(sd, TRUE, acl, FALSE)) {
+    auto lastError = GetLastError();
+    LocalFree(sd);
+    LocalFree(acl);
+    GlobalOutput.perror("TPipeServer::SetSecurityDescriptorDacl() GLE=", lastError);
+    throw TTransportException(TTransportException::NOT_OPEN,
+                              "SetSecurityDescriptorDacl() failed", lastError);
+  }
 
   SECURITY_ATTRIBUTES sa;
   sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -351,13 +367,17 @@ bool TNamedPipeServer::createNamedPipe(const TAutoCrit & /*lockProof*/) {
                                      0,                    // client time-out
                                      &sa));                // security attributes
 
+  auto lastError = GetLastError();
+  LocalFree(sd);
+  LocalFree(acl);
+  FreeSid(everyone_sid);
+
   if (hPipe.h == INVALID_HANDLE_VALUE) {
     Pipe_.reset();
-    GlobalOutput.perror("TPipeServer::TCreateNamedPipe() GLE=", GetLastError());
+    GlobalOutput.perror("TPipeServer::TCreateNamedPipe() GLE=", lastError);
     throw TTransportException(TTransportException::NOT_OPEN,
                               "TCreateNamedPipe() failed",
-                              GetLastError());
-    return false;
+                lastError);
   }
 
   Pipe_.reset(hPipe.release());
@@ -368,8 +388,17 @@ bool TAnonPipeServer::createAnonPipe() {
   SECURITY_ATTRIBUTES sa;
   SECURITY_DESCRIPTOR sd; // security information for pipes
 
-  InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
-  SetSecurityDescriptorDacl(&sd, true, NULL, false);
+  if (!InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION))
+  {
+    GlobalOutput.perror("TPipeServer InitializeSecurityDescriptor (anon) failed, GLE=", GetLastError());
+    return false;
+  }
+  if (!SetSecurityDescriptorDacl(&sd, true, NULL, false))
+  {
+    GlobalOutput.perror("TPipeServer SetSecurityDescriptorDacl (anon) failed, GLE=",
+                        GetLastError());
+    return false;
+  }
   sa.lpSecurityDescriptor = &sd;
   sa.nLength = sizeof(SECURITY_ATTRIBUTES);
   sa.bInheritHandle = true; // allow passing handle to child
@@ -399,12 +428,12 @@ bool TAnonPipeServer::createAnonPipe() {
 //---------------------------------------------------------
 // Accessors
 //---------------------------------------------------------
-string TPipeServer::getPipename() {
+std::string TPipeServer::getPipename() {
   return pipename_;
 }
 
 void TPipeServer::setPipename(const std::string& pipename) {
-  if (pipename.find("\\\\") == -1)
+  if (pipename.find("\\\\") == std::string::npos)
     pipename_ = "\\\\.\\pipe\\" + pipename;
   else
     pipename_ = pipename;

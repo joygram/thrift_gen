@@ -21,7 +21,7 @@
 
 #include "ServerThread.h"
 
-#include <thrift/concurrency/PlatformThreadFactory.h>
+#include <thrift/concurrency/ThreadFactory.h>
 #include <thrift/concurrency/ThreadManager.h>
 #include <thrift/server/TThreadPoolServer.h>
 #include <thrift/transport/TBufferTransports.h>
@@ -35,8 +35,10 @@ void ServerThread::start() {
   assert(!running_);
   running_ = true;
 
+  helper_.reset(new Helper(this));
+
   // Start the other thread
-  concurrency::PlatformThreadFactory threadFactory;
+  concurrency::ThreadFactory threadFactory;
   threadFactory.setDetached(false);
   thread_ = threadFactory.newThread(helper_);
 
@@ -90,7 +92,7 @@ void ServerThread::run() {
     try {
       // Try to serve requests
       server_->serve();
-    } catch (const TException& x) {
+    } catch (const TException&) {
       // TNonblockingServer throws a generic TException if it fails to bind.
       // If we get a TException, we'll optimistically assume the bind failed.
       ++port_;
@@ -128,7 +130,7 @@ void ServerThread::preServe() {
   serverState_->bindSuccessful(port_);
 
   // Set the real server event handler (replacing ourself)
-  boost::shared_ptr<server::TServerEventHandler> serverEventHandler
+  std::shared_ptr<server::TServerEventHandler> serverEventHandler
       = serverState_->getServerEventHandler();
   server_->setServerEventHandler(serverEventHandler);
 

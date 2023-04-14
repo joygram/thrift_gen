@@ -20,11 +20,14 @@
 #ifndef _THRIFT_TEVHTTP_CLIENT_CHANNEL_H_
 #define _THRIFT_TEVHTTP_CLIENT_CHANNEL_H_ 1
 
+#include <queue>
 #include <string>
-#include <boost/shared_ptr.hpp>
+#include <utility>
+#include <memory>
 #include <thrift/async/TAsyncChannel.h>
 
 struct event_base;
+struct evdns_base;
 struct evhttp_connection;
 struct evhttp_request;
 
@@ -48,32 +51,34 @@ public:
                        const std::string& path,
                        const char* address,
                        int port,
-                       struct event_base* eb);
-  ~TEvhttpClientChannel();
+                       struct event_base* eb,
+                       struct evdns_base *dnsbase = nullptr);
+  ~TEvhttpClientChannel() override;
 
-  virtual void sendAndRecvMessage(const VoidCallback& cob,
+  void sendAndRecvMessage(const VoidCallback& cob,
                                   apache::thrift::transport::TMemoryBuffer* sendBuf,
-                                  apache::thrift::transport::TMemoryBuffer* recvBuf);
+                                  apache::thrift::transport::TMemoryBuffer* recvBuf) override;
 
-  virtual void sendMessage(const VoidCallback& cob,
-                           apache::thrift::transport::TMemoryBuffer* message);
-  virtual void recvMessage(const VoidCallback& cob,
-                           apache::thrift::transport::TMemoryBuffer* message);
+  void sendMessage(const VoidCallback& cob,
+                           apache::thrift::transport::TMemoryBuffer* message) override;
+  void recvMessage(const VoidCallback& cob,
+                           apache::thrift::transport::TMemoryBuffer* message) override;
 
   void finish(struct evhttp_request* req);
 
   // XXX
-  virtual bool good() const { return true; }
-  virtual bool error() const { return false; }
-  virtual bool timedOut() const { return false; }
+  bool good() const override { return true; }
+  bool error() const override { return false; }
+  bool timedOut() const override { return false; }
 
 private:
   static void response(struct evhttp_request* req, void* arg);
 
   std::string host_;
   std::string path_;
-  VoidCallback cob_;
-  apache::thrift::transport::TMemoryBuffer* recvBuf_;
+  typedef std::pair<VoidCallback, apache::thrift::transport::TMemoryBuffer*> Completion;
+  typedef std::queue<Completion> CompletionQueue;
+  CompletionQueue completionQueue_;
   struct evhttp_connection* conn_;
 };
 }

@@ -20,9 +20,8 @@
 #ifndef _THRIFT_TASYNCPROCESSOR_H_
 #define _THRIFT_TASYNCPROCESSOR_H_ 1
 
-#include <thrift/cxxfunctional.h>
-#include <boost/shared_ptr.hpp>
 #include <thrift/protocol/TProtocol.h>
+#include <memory>
 #include <thrift/TProcessor.h>
 
 namespace apache {
@@ -34,43 +33,34 @@ namespace async {
  * the call to process returns.  Instead, it calls a cob to signal completion.
  */
 
-class TEventServer; // forward declaration
-
 class TAsyncProcessor {
 public:
-  virtual ~TAsyncProcessor() {}
+  virtual ~TAsyncProcessor() = default;
 
-  virtual void process(apache::thrift::stdcxx::function<void(bool success)> _return,
-                       boost::shared_ptr<protocol::TProtocol> in,
-                       boost::shared_ptr<protocol::TProtocol> out) = 0;
+  virtual void process(std::function<void(bool success)> _return,
+                       std::shared_ptr<protocol::TProtocol> in,
+                       std::shared_ptr<protocol::TProtocol> out) = 0;
 
-  void process(apache::thrift::stdcxx::function<void(bool success)> _return,
-               boost::shared_ptr<apache::thrift::protocol::TProtocol> io) {
+  void process(std::function<void(bool success)> _return,
+               std::shared_ptr<protocol::TProtocol> io) {
     return process(_return, io, io);
   }
 
-  boost::shared_ptr<TProcessorEventHandler> getEventHandler() { return eventHandler_; }
+  std::shared_ptr<TProcessorEventHandler> getEventHandler() const { return eventHandler_; }
 
-  void setEventHandler(boost::shared_ptr<TProcessorEventHandler> eventHandler) {
+  void setEventHandler(std::shared_ptr<TProcessorEventHandler> eventHandler) {
     eventHandler_ = eventHandler;
   }
 
-  const TEventServer* getAsyncServer() { return asyncServer_; }
-
 protected:
-  TAsyncProcessor() {}
+  TAsyncProcessor() = default;
 
-  boost::shared_ptr<TProcessorEventHandler> eventHandler_;
-  const TEventServer* asyncServer_;
-
-private:
-  friend class TEventServer;
-  void setAsyncServer(const TEventServer* server) { asyncServer_ = server; }
+  std::shared_ptr<TProcessorEventHandler> eventHandler_;
 };
 
 class TAsyncProcessorFactory {
 public:
-  virtual ~TAsyncProcessorFactory() {}
+  virtual ~TAsyncProcessorFactory() = default;
 
   /**
    * Get the TAsyncProcessor to use for a particular connection.
@@ -79,16 +69,15 @@ public:
    * accepted on.  This generally means that this call does not need to be
    * thread safe, as it will always be invoked from a single thread.
    */
-  virtual boost::shared_ptr<TAsyncProcessor> getProcessor(const TConnectionInfo& connInfo) = 0;
+  virtual std::shared_ptr<TAsyncProcessor> getProcessor(const TConnectionInfo& connInfo) = 0;
 };
 }
 }
 } // apache::thrift::async
 
-// XXX I'm lazy for now
 namespace apache {
 namespace thrift {
-using apache::thrift::async::TAsyncProcessor;
+  using apache::thrift::async::TAsyncProcessor;
 }
 }
 

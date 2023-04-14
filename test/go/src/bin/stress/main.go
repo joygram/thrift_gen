@@ -20,6 +20,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"gen/stress"
@@ -201,14 +202,13 @@ func client(protocolFactory thrift.TProtocolFactory) {
 			atomic.AddInt64(&clicounter, 1)
 		}
 	case echoSet:
-		s := map[int8]bool{-10: true, -9: true, -8: true, -7: true, -6: true, -5: true, -4: true, -3: true, -2: true, -1: true, 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true}
+		s := map[int8]struct{}{-10: {}, -9: {}, -8: {}, -7: {}, -6: {}, -5: {}, -4: {}, -3: {}, -2: {}, -1: {}, 0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}}
 		for i := 0; i < *loop; i++ {
 			client.EchoSet(s)
 			atomic.AddInt64(&clicounter, 1)
 		}
 	case echoMap:
-		m := map[int8]int8{
-			-10: 10, -9: 9, -8: 8, -7: 7, -6: 6, -5: 5, -4: 4, -3: 3, -2: 2, -1: 1, 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8}
+		m := map[int8]int8{-10: 10, -9: 9, -8: 8, -7: 7, -6: 6, -5: 5, -4: 4, -3: 3, -2: 2, -1: 1, 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8}
 		for i := 0; i < *loop; i++ {
 			client.EchoMap(m)
 			atomic.AddInt64(&clicounter, 1)
@@ -220,35 +220,35 @@ func client(protocolFactory thrift.TProtocolFactory) {
 
 type handler struct{}
 
-func (h *handler) EchoVoid() (err error) {
+func (h *handler) EchoVoid(ctx context.Context) (err error) {
 	atomic.AddInt64(&counter, 1)
 	return nil
 }
-func (h *handler) EchoByte(arg int8) (r int8, err error) {
+func (h *handler) EchoByte(ctx context.Context, arg int8) (r int8, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoI32(arg int32) (r int32, err error) {
+func (h *handler) EchoI32(ctx context.Context, arg int32) (r int32, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoI64(arg int64) (r int64, err error) {
+func (h *handler) EchoI64(ctx context.Context, arg int64) (r int64, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoString(arg string) (r string, err error) {
+func (h *handler) EchoString(ctx context.Context, arg string) (r string, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoList(arg []int8) (r []int8, err error) {
+func (h *handler) EchoList(ctx context.Context, arg []int8) (r []int8, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoSet(arg map[int8]bool) (r map[int8]bool, err error) {
+func (h *handler) EchoSet(ctx context.Context, arg map[int8]struct{}) (r map[int8]struct{}, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }
-func (h *handler) EchoMap(arg map[int8]int8) (r map[int8]int8, err error) {
+func (h *handler) EchoMap(ctx context.Context, arg map[int8]int8) (r map[int8]int8, err error) {
 	atomic.AddInt64(&counter, 1)
 	return arg, nil
 }

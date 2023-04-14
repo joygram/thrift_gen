@@ -19,10 +19,16 @@
 # under the License.
 #
 
-import sys, os, glob, time
+import glob
+import os
+import sys
+import time
+
 basepath = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(basepath, 'gen-py.twisted'))
 sys.path.insert(0, glob.glob(os.path.join(basepath, '../../lib/py/build/lib.*'))[0])
+
+from thrift.Thrift import TApplicationException
 
 from ThriftTest import ThriftTest
 from ThriftTest.ttypes import Xception, Xtruct
@@ -33,11 +39,11 @@ from twisted.trial import unittest
 from twisted.internet import defer, reactor
 from twisted.internet.protocol import ClientCreator
 
-from zope.interface import implements
+from zope.interface import implementer
 
+
+@implementer(ThriftTest.Iface)
 class TestHandler:
-    implements(ThriftTest.Iface)
-
     def __init__(self):
         self.onewaysQueue = defer.DeferredQueue()
 
@@ -81,6 +87,7 @@ class TestHandler:
         def fireOneway(t):
             self.onewaysQueue.put((t, time.time(), seconds))
         reactor.callLater(seconds, fireOneway, time.time())
+        raise Exception('')
 
     def testNest(self, thing):
         return thing
@@ -100,6 +107,7 @@ class TestHandler:
     def testTypedef(self, thing):
         return thing
 
+
 class ThriftTestCase(unittest.TestCase):
 
     @defer.inlineCallbacks
@@ -108,16 +116,15 @@ class ThriftTestCase(unittest.TestCase):
         self.processor = ThriftTest.Processor(self.handler)
         self.pfactory = TBinaryProtocol.TBinaryProtocolFactory()
 
-        self.server = reactor.listenTCP(0,
-            TTwisted.ThriftServerFactory(self.processor,
-            self.pfactory), interface="127.0.0.1")
+        self.server = reactor.listenTCP(
+            0, TTwisted.ThriftServerFactory(self.processor, self.pfactory), interface="127.0.0.1")
 
         self.portNo = self.server.getHost().port
 
         self.txclient = yield ClientCreator(reactor,
-            TTwisted.ThriftClientProtocol,
-            ThriftTest.Client,
-            self.pfactory).connectTCP("127.0.0.1", self.portNo)
+                                            TTwisted.ThriftClientProtocol,
+                                            ThriftTest.Client,
+                                            self.pfactory).connectTCP("127.0.0.1", self.portNo)
         self.client = self.txclient.client
 
     @defer.inlineCallbacks
@@ -168,22 +175,24 @@ class ThriftTestCase(unittest.TestCase):
 
     @defer.inlineCallbacks
     def testException(self):
-        yield self.client.testException('Safe')
         try:
             yield self.client.testException('Xception')
             self.fail("should have gotten exception")
-        except Xception, x:
+        except Xception as x:
             self.assertEquals(x.errorCode, 1001)
             self.assertEquals(x.message, 'Xception')
 
         try:
             yield self.client.testException("throw_undeclared")
-            self.fail("should have thrown exception")
-        except Exception: # type is undefined
+            self.fail("should have gotten exception")
+        except TApplicationException:
             pass
+
+        yield self.client.testException('Safe')
 
     @defer.inlineCallbacks
     def testOneway(self):
         yield self.client.testOneway(1)
         start, end, seconds = yield self.handler.onewaysQueue.get()
         self.assertAlmostEquals(seconds, (end - start), places=1)
+        self.assertEquals((yield self.client.testI32(-1)), -1)

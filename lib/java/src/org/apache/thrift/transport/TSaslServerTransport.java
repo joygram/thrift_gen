@@ -20,6 +20,7 @@
 package org.apache.thrift.transport;
 
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -130,7 +131,7 @@ public class TSaslServerTransport extends TSaslTransport {
     }
 
     // Get the mechanism name.
-    String mechanismName = new String(message.payload);
+    String mechanismName = new String(message.payload, StandardCharsets.UTF_8);
     TSaslServerDefinition serverDefinition = serverDefinitionMap.get(mechanismName);
     LOGGER.debug("Received mechanism name '{}'", mechanismName);
 
@@ -145,7 +146,7 @@ public class TSaslServerTransport extends TSaslTransport {
 
   /**
    * <code>TTransportFactory</code> to create
-   * <code>TSaslServerTransports<c/ode>. Ensures that a given
+   * <code>TSaslServerTransports</code>. Ensures that a given
    * underlying <code>TTransport</code> instance receives the same
    * <code>TSaslServerTransport</code>. This is kind of an awful hack to work
    * around the fact that Thrift is designed assuming that

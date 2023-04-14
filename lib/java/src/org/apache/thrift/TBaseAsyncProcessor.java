@@ -19,6 +19,7 @@
 package org.apache.thrift;
 
 import org.apache.thrift.protocol.*;
+import org.apache.thrift.async.AsyncMethodCallback;
 
 import org.apache.thrift.server.AbstractNonblockingServer.*;
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
         return Collections.unmodifiableMap(processMap);
     }
 
-    public boolean process(final AsyncFrameBuffer fb) throws TException {
+    public void process(final AsyncFrameBuffer fb) throws TException {
 
         final TProtocol in = fb.getInputProtocol();
         final TProtocol out = fb.getOutputProtocol();
@@ -53,40 +54,61 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
         if (fn == null) {
             TProtocolUtil.skip(in, TType.STRUCT);
             in.readMessageEnd();
-            TApplicationException x = new TApplicationException(TApplicationException.UNKNOWN_METHOD, "Invalid method name: '"+msg.name+"'");
-            out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));
-            x.write(out);
-            out.writeMessageEnd();
-            out.getTransport().flush();
+
+            TApplicationException x = new TApplicationException(TApplicationException.UNKNOWN_METHOD,
+                "Invalid method name: '" + msg.name + "'");
+            LOGGER.debug("Invalid method name", x);
+
+            // this means it is a two-way request, so we can send a reply
+            if (msg.type == TMessageType.CALL) {
+              out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));
+              x.write(out);
+              out.writeMessageEnd();
+              out.getTransport().flush();
+            }
             fb.responseReady();
-            return true;
+            return;
         }
 
         //Get Args
-        TBase args = (TBase)fn.getEmptyArgsInstance();
+        TBase args = fn.getEmptyArgsInstance();
 
         try {
             args.read(in);
         } catch (TProtocolException e) {
             in.readMessageEnd();
-            TApplicationException x = new TApplicationException(TApplicationException.PROTOCOL_ERROR, e.getMessage());
-            out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));
-            x.write(out);
-            out.writeMessageEnd();
-            out.getTransport().flush();
+
+            TApplicationException x = new TApplicationException(TApplicationException.PROTOCOL_ERROR,
+                e.getMessage());
+            LOGGER.debug("Could not retrieve function arguments", x);
+
+            if (!fn.isOneway()) {
+              out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));
+              x.write(out);
+              out.writeMessageEnd();
+              out.getTransport().flush();
+            }
             fb.responseReady();
-            return true;
+            return;
         }
         in.readMessageEnd();
 
+        if (fn.isOneway()) {
+          fb.responseReady();
+        }
 
         //start off processing function
-        fn.start(iface, args,fn.getResultHandler(fb,msg.seqid));
-        return true;
+        AsyncMethodCallback resultHandler = fn.getResultHandler(fb, msg.seqid);
+        try {
+          fn.start(iface, args, resultHandler);
+        } catch (Exception e) {
+          LOGGER.debug("Exception handling function", e);
+          resultHandler.onError(e);
+        }
+        return;
     }
 
     @Override
-    public boolean process(TProtocol in, TProtocol out) throws TException {
-        return false;
+    public void process(TProtocol in, TProtocol out) throws TException {
     }
 }

@@ -1,0 +1,3 @@
+is_global = true
+build_property.RootNamespace = Thrift
+build_property.ProjectDir = D:\workspace\sling_workspace\third_party_build\thrift\thrift-0.13.0_gen\lib\csharp_gen\src\

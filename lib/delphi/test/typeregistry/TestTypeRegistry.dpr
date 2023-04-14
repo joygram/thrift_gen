@@ -25,14 +25,16 @@ uses
   Classes, Windows, SysUtils, Generics.Collections, TypInfo,
   Thrift in '..\..\src\Thrift.pas',
   Thrift.Transport in '..\..\src\Thrift.Transport.pas',
+  Thrift.Exception in '..\..\src\Thrift.Exception.pas',
+  Thrift.Socket in '..\..\src\Thrift.Socket.pas',
   Thrift.Protocol in '..\..\src\Thrift.Protocol.pas',
   Thrift.Protocol.JSON in '..\..\src\Thrift.Protocol.JSON.pas',
   Thrift.Collections in '..\..\src\Thrift.Collections.pas',
   Thrift.Server in '..\..\src\Thrift.Server.pas',
-  Thrift.Console in '..\..\src\Thrift.Console.pas',
   Thrift.Utils in '..\..\src\Thrift.Utils.pas',
   Thrift.Serializer in '..\..\src\Thrift.Serializer.pas',
   Thrift.Stream in '..\..\src\Thrift.Stream.pas',
+  Thrift.WinHTTP in '..\..\src\Thrift.WinHTTP.pas',
   Thrift.TypeRegistry in '..\..\src\Thrift.TypeRegistry.pas',
   DebugProtoTest;
 

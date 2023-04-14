@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements. See the NOTICE file
 # distributed with this work for additional information
@@ -18,36 +19,92 @@
 
 # build Apache Thrift on AppVeyor - https://ci.appveyor.com
 
-version: '{build}'
+version: '0.13.0.{build}'
+
+shallow_clone: true
+
+branches:
+  only:
+    - master
+    - /^(release/)?\d+\.\d+\.\d+$/
+
 os:
-- Windows Server 2012 R2
-- Visual Studio 2014 CTP4
-- Visual Studio 2015 CTP
-- Visual Studio 2015 CTP 6
-- Visual Studio 2015 Preview
+  - Visual Studio 2017
+
+matrix:
+  fast_finish: true
 
 environment:
-  BOOST_ROOT: c:\Libraries\boost
-  BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
+  matrix:
+   - PROFILE: MSVC2017
+     PLATFORM: x64
+     CONFIGURATION: Release
+     BUILD_SHARED_LIBS: ON
+     BOOST_VERSION: 1.67.0
+     LIBEVENT_VERSION: 2.1.8
+     PYTHON_VERSION: 3.6
+     QT_VERSION: 5.10
+     ZLIB_VERSION: 1.2.11
+     DISABLED_TESTS: (StressTestNonBlocking)
+
+   - PROFILE: MSVC2015
+     PLATFORM: x86
+     CONFIGURATION: Debug
+     BUILD_SHARED_LIBS: OFF
+     BOOST_VERSION: 1.62.0
+     LIBEVENT_VERSION: 2.0.22
+     PYTHON_VERSION: 3.5
+     QT_VERSION: 5.8
+     ZLIB_VERSION: 1.2.8
+     DISABLED_TESTS: (StressTestNonBlocking)
+     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+
+   - PROFILE: MINGW
+     PLATFORM: x64
+     CONFIGURATION: RelWithDebInfo
+     DISABLED_TESTS: (StalenessCheckTest|StressTestNonBlocking)
+
+   - PROFILE: CYGWIN
+     PLATFORM: x64
+     CONFIGURATION: RelWithDebInfo
+     DISABLED_TESTS: (ZlibTest|OpenSSLManualInitTest|TNonblockingServerTest|StressTestNonBlocking)
 
 install:
-- cinst cmake
-- cinst nsis
-- cinst ant
-- cinst winflexbison
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - call build\appveyor\%PROFILE:~0,4%-appveyor-install.bat
+  - refreshenv
 
 build_script:
-- set PATH=C:\ProgramData\chocolatey\bin;C:\tools\apache-ant-1.9.4\bin;%PATH%
-- mv C:\ProgramData\chocolatey\bin\win_bison.exe C:\ProgramData\chocolatey\bin\bison.exe
-- mv C:\ProgramData\chocolatey\bin\win_flex.exe C:\ProgramData\chocolatey\bin\flex.exe
-- set JAVA_HOME=C:\Program Files\Java\jdk1.7.0
-- set PATH=%JAVA_HOME%\bin;%PATH%
-- mkdir cmake-build
-- cd cmake-build
-- cmake -DBUILD_TESTING=OFF ..
-- cmake --build .
-- cmake --build . --config Release
-- cpack
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - call build\appveyor\%PROFILE:~0,4%-appveyor-build.bat
 
-#TODO enable testing
-#TODO make it perfect ;-r
+test_script:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - call build\appveyor\%PROFILE:~0,4%-appveyor-test.bat
+
+
+# artifact capture disabled as it might increase service cost for little gain:
+#
+# artifacts:
+#  - path: local-thrift-inst
+#    name: cmake installed content
+#    type: zip
+#
+#  - path: local-thrift-build\Testing
+#    name: ctest output
+#    type: zip
+
+# RDP support: use one or the other...
+#
+# enables RDP for each build job so you can inspect the environment at the beginning of the job:
+# init:
+#  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#
+# enables RDP at the end of the build job so you can login and re-run
+# commands to see why something failed...
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#
+# also need:
+# environment:
+#   APPVEYOR_RDP_PASSWORD: thr1FT2345$xyzZ

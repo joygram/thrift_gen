@@ -29,7 +29,7 @@ nodist_libtestcglib_la_SOURCES = \
 
 libtestcglib_la_LIBADD = $(top_builddir)/lib/c_glib/libthrift_c_glib.la
 
-precross: test_client test_server
+precross: libtestcglib.la test_client test_server
 
 check_PROGRAMS = \
 	test_client \
@@ -45,6 +45,8 @@ test_client_LDADD = \
 test_server_SOURCES = \
 	src/thrift_test_handler.c \
 	src/thrift_test_handler.h \
+	src/thrift_second_service_handler.c \
+	src/thrift_second_service_handler.h \
 	src/test_server.c
 
 test_server_LDADD = \
@@ -54,8 +56,6 @@ test_server_LDADD = \
 #
 # Common thrift code generation rules
 #
-THRIFT = $(top_builddir)/compiler/cpp/thrift
-
 gen-c_glib/t_test_second_service.c  gen-c_glib/t_test_second_service.h  gen-c_glib/t_test_thrift_test.c  gen-c_glib/t_test_thrift_test.h  gen-c_glib/t_test_thrift_test_types.c  gen-c_glib/t_test_thrift_test_types.h: $(top_srcdir)/test/ThriftTest.thrift $(THRIFT)
 	$(THRIFT) --gen c_glib -r $<
 
@@ -65,10 +65,18 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib/c_glib/src -Igen-c_glib
 AM_LDFLAGS = $(GLIB_LIBS) $(GOBJECT_LIBS) @GCOV_LDFLAGS@
 
 clean-local:
-	$(RM) gen-c_glib/*
+	$(RM) -r gen-c_glib/
+	$(RM) test_client
+	$(RM) test_server
+	$(RM) libtestcglib.la
+	find . -type f -iname "*.o" | xargs rm -f
+
+dist-hook:
+	$(RM) -r $(distdir)/gen-c_glib/
+	$(RM) $(distdir)/test_client
+	$(RM) $(distdir)/test_server
+	$(RM) $(distdir)/libtestcglib.la
+	find $(distdir) -type f -iname "*.o" | xargs rm -f
 
 EXTRA_DIST = \
-	src/test_client.c \
-	src/thrift_test_handler.c \
-	src/thrift_test_handler.h \
-	src/test_server.c
+	src

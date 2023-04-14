@@ -19,8 +19,10 @@
 
 package org.apache.thrift.protocol;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Stack;
 
 import org.apache.thrift.TByteArrayOutputStream;
@@ -306,6 +308,13 @@ public class TJSONProtocol extends TProtocol {
     context_ = contextStack_.pop();
   }
 
+  // Reset the context stack to its initial state
+  private void resetContext() {
+    while (!contextStack_.isEmpty()) {
+      popContext();
+    }
+  }
+
   /**
    * Constructor
    */
@@ -409,12 +418,8 @@ public class TJSONProtocol extends TProtocol {
     if (escapeNum) {
       trans_.write(QUOTE);
     }
-    try {
-      byte[] buf = str.getBytes("UTF-8");
-      trans_.write(buf);
-    } catch (UnsupportedEncodingException uex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    byte[] buf = str.getBytes(StandardCharsets.UTF_8);
+    trans_.write(buf);
     if (escapeNum) {
       trans_.write(QUOTE);
     }
@@ -444,12 +449,8 @@ public class TJSONProtocol extends TProtocol {
     if (escapeNum) {
       trans_.write(QUOTE);
     }
-    try {
-      byte[] b = str.getBytes("UTF-8");
-      trans_.write(b, 0, b.length);
-    } catch (UnsupportedEncodingException uex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    byte[] b = str.getBytes(StandardCharsets.UTF_8);
+    trans_.write(b, 0, b.length);
     if (escapeNum) {
       trans_.write(QUOTE);
     }
@@ -501,14 +502,11 @@ public class TJSONProtocol extends TProtocol {
 
   @Override
   public void writeMessageBegin(TMessage message) throws TException {
+    resetContext(); // THRIFT-3743
     writeJSONArrayStart();
     writeJSONInteger(VERSION);
-    try {
-      byte[] b = message.name.getBytes("UTF-8");
-      writeJSONString(b);
-    } catch (UnsupportedEncodingException uex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    byte[] b = message.name.getBytes(StandardCharsets.UTF_8);
+    writeJSONString(b);
     writeJSONInteger(message.type);
     writeJSONInteger(message.seqid);
   }
@@ -618,12 +616,8 @@ public class TJSONProtocol extends TProtocol {
 
   @Override
   public void writeString(String str) throws TException {
-    try {
-      byte[] b = str.getBytes("UTF-8");
-      writeJSONString(b);
-    } catch (UnsupportedEncodingException uex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    byte[] b = str.getBytes(StandardCharsets.UTF_8);
+    writeJSONString(b);
   }
 
   @Override
@@ -640,6 +634,7 @@ public class TJSONProtocol extends TProtocol {
   private TByteArrayOutputStream readJSONString(boolean skipContext)
     throws TException {
     TByteArrayOutputStream arr = new TByteArrayOutputStream(DEF_STRING_SIZE);
+    ArrayList<Character> codeunits = new ArrayList<Character>();
     if (!skipContext) {
       context_.read();
     }
@@ -652,10 +647,41 @@ public class TJSONProtocol extends TProtocol {
       if (ch == ESCSEQ[0]) {
         ch = reader_.read();
         if (ch == ESCSEQ[1]) {
-          readJSONSyntaxChar(ZERO);
-          readJSONSyntaxChar(ZERO);
-          trans_.readAll(tmpbuf_, 0, 2);
-          ch = (byte)((hexVal((byte)tmpbuf_[0]) << 4) + hexVal(tmpbuf_[1]));
+          trans_.readAll(tmpbuf_, 0, 4);
+          short cu = (short)(
+              ((short)hexVal(tmpbuf_[0]) << 12) +
+              ((short)hexVal(tmpbuf_[1]) << 8) +
+              ((short)hexVal(tmpbuf_[2]) << 4) +
+              (short)hexVal(tmpbuf_[3]));
+          try {
+            if (Character.isHighSurrogate((char)cu)) {
+              if (codeunits.size() > 0) {
+                throw new TProtocolException(TProtocolException.INVALID_DATA,
+                    "Expected low surrogate char");
+              }
+              codeunits.add((char)cu);
+            }
+            else if (Character.isLowSurrogate((char)cu)) {
+              if (codeunits.size() == 0) {
+                throw new TProtocolException(TProtocolException.INVALID_DATA,
+                    "Expected high surrogate char");
+              }
+
+              codeunits.add((char)cu);
+              arr.write(
+                  (new String(new int[] { codeunits.get(0), codeunits.get(1) },
+                      0, 2)).getBytes(StandardCharsets.UTF_8));
+              codeunits.clear();
+            }
+            else {
+              arr.write((new String(new int[] { cu }, 0, 1))
+                  .getBytes(StandardCharsets.UTF_8));
+            }
+            continue;
+          } catch (IOException ex) {
+            throw new TProtocolException(TProtocolException.INVALID_DATA,
+                "Invalid unicode sequence");
+          }
         }
         else {
           int off = ESCAPE_CHARS.indexOf(ch);
@@ -733,19 +759,14 @@ public class TJSONProtocol extends TProtocol {
     context_.read();
     if (reader_.peek() == QUOTE[0]) {
       TByteArrayOutputStream arr = readJSONString(true);
-      try {
-        double dub = Double.valueOf(arr.toString("UTF-8"));
-        if (!context_.escapeNum() && !Double.isNaN(dub) &&
-            !Double.isInfinite(dub)) {
-          // Throw exception -- we should not be in a string in this case
-          throw new TProtocolException(TProtocolException.INVALID_DATA,
-                                       "Numeric data unexpectedly quoted");
-        }
-        return dub;
+      double dub = Double.valueOf(arr.toString(StandardCharsets.UTF_8));
+      if (!context_.escapeNum() && !Double.isNaN(dub)
+          && !Double.isInfinite(dub)) {
+        // Throw exception -- we should not be in a string in this case
+        throw new TProtocolException(TProtocolException.INVALID_DATA,
+            "Numeric data unexpectedly quoted");
       }
-      catch (UnsupportedEncodingException ex) {
-        throw new TException("JVM DOES NOT SUPPORT UTF-8");
-      }
+      return dub;
     }
     else {
       if (context_.escapeNum()) {
@@ -769,6 +790,11 @@ public class TJSONProtocol extends TProtocol {
     int len = arr.len();
     int off = 0;
     int size = 0;
+    // Ignore padding
+    int bound = len >= 2 ? len - 2 : 0;
+    for (int i = len - 1; i >= bound && b[i] == '='; --i) {
+      --len;
+    }
     while (len >= 4) {
       // Decode 4 bytes at a time
       TBase64Utils.decode(b, off, 4, b, size); // NB: decoded in place
@@ -813,18 +839,13 @@ public class TJSONProtocol extends TProtocol {
 
   @Override
   public TMessage readMessageBegin() throws TException {
+    resetContext(); // THRIFT-3743
     readJSONArrayStart();
     if (readJSONInteger() != VERSION) {
       throw new TProtocolException(TProtocolException.BAD_VERSION,
                                    "Message contained bad version.");
     }
-    String name;
-    try {
-      name = readJSONString(false).toString("UTF-8");
-    }
-    catch (UnsupportedEncodingException ex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    String name = readJSONString(false).toString(StandardCharsets.UTF_8);
     byte type = (byte) readJSONInteger();
     int seqid = (int) readJSONInteger();
     return new TMessage(name, type, seqid);
@@ -941,12 +962,7 @@ public class TJSONProtocol extends TProtocol {
 
   @Override
   public String readString() throws TException {
-    try {
-      return readJSONString(false).toString("UTF-8");
-    }
-    catch (UnsupportedEncodingException ex) {
-      throw new TException("JVM DOES NOT SUPPORT UTF-8");
-    }
+    return readJSONString(false).toString(StandardCharsets.UTF_8);
   }
 
   @Override

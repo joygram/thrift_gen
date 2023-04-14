@@ -30,6 +30,14 @@
 
 #include <thrift/transport/TFileTransport.h>
 
+#ifdef __MINGW32__
+  #include <io.h>
+  #include <unistd.h>
+  #include <sys/types.h>
+  #include <fcntl.h>
+  #include <sys\stat.h>
+#endif
+
 using namespace apache::thrift::transport;
 
 /**************************************************************************
@@ -45,20 +53,6 @@ FsyncLog* fsync_log;
  * Helper code
  **************************************************************************/
 
-// Provide BOOST_WARN_LT() and BOOST_WARN_GT(), in case we're compiled
-// with an older version of boost
-#ifndef BOOST_WARN_LT
-#define BOOST_WARN_CMP(a, b, op, check_fn)                                                         \
-  check_fn((a)op(b),                                                                               \
-           "check " BOOST_STRINGIZE(a) " " BOOST_STRINGIZE(op) " " BOOST_STRINGIZE(                \
-               b) " failed: " BOOST_STRINGIZE(a) "="                                               \
-           << (a) << " " BOOST_STRINGIZE(b) "=" << (b))
-
-#define BOOST_WARN_LT(a, b) BOOST_WARN_CMP(a, b, <, BOOST_WARN_MESSAGE)
-#define BOOST_WARN_GT(a, b) BOOST_WARN_CMP(a, b, >, BOOST_WARN_MESSAGE)
-#define BOOST_WARN_LT(a, b) BOOST_WARN_CMP(a, b, <, BOOST_WARN_MESSAGE)
-#endif // BOOST_WARN_LT
-
 /**
  * Class to record calls to fsync
  */
@@ -70,12 +64,12 @@ public:
   };
   typedef std::list<FsyncCall> CallList;
 
-  FsyncLog() {}
+  FsyncLog() = default;
 
   void fsync(int fd) {
     (void)fd;
     FsyncCall call;
-    gettimeofday(&call.time, NULL);
+    THRIFT_GETTIMEOFDAY(&call.time, nullptr);
     calls_.push_back(call);
   }
 
@@ -91,6 +85,20 @@ private:
 class TempFile {
 public:
   TempFile(const char* directory, const char* prefix) {
+  #ifdef __MINGW32__
+    ((void)directory);
+    size_t path_len = strlen(prefix) + 8;
+    path_ = new char[path_len];
+    snprintf(path_, path_len, "%sXXXXXX", prefix);
+    if (_mktemp_s(path_,path_len) == 0) {
+      fd_ = open(path_,O_CREAT | O_RDWR | O_BINARY,S_IREAD | S_IWRITE);
+      if (fd_ < 0) {
+        throw apache::thrift::TException("_mktemp_s() failed");
+      }
+    } else {
+      throw apache::thrift::TException("_mktemp_s() failed");
+    }
+  #else
     size_t path_len = strlen(directory) + strlen(prefix) + 8;
     path_ = new char[path_len];
     snprintf(path_, path_len, "%s/%sXXXXXX", directory, prefix);
@@ -99,6 +107,7 @@ public:
     if (fd_ < 0) {
       throw apache::thrift::TException("mkstemp() failed");
     }
+  #endif
   }
 
   ~TempFile() {
@@ -114,7 +123,7 @@ public:
     if (path_) {
       ::unlink(path_);
       delete[] path_;
-      path_ = NULL;
+      path_ = nullptr;
     }
   }
 
@@ -167,7 +176,7 @@ BOOST_AUTO_TEST_CASE(test_destructor) {
 
   unsigned int num_over = 0;
   for (unsigned int n = 0; n < NUM_ITERATIONS; ++n) {
-    ftruncate(f.getFD(), 0);
+    BOOST_CHECK_EQUAL(0, ftruncate(f.getFD(), 0));
 
     TFileTransport* transport = new TFileTransport(f.getPath());
 
@@ -186,16 +195,16 @@ BOOST_AUTO_TEST_CASE(test_destructor) {
     struct timeval start;
     struct timeval end;
 
-    gettimeofday(&start, NULL);
+    THRIFT_GETTIMEOFDAY(&start, nullptr);
     delete transport;
-    gettimeofday(&end, NULL);
+    THRIFT_GETTIMEOFDAY(&end, nullptr);
 
     int delta = time_diff(&start, &end);
 
     // If any attempt takes more than 500ms, treat that as a failure.
     // Treat this as a fatal failure, so we'll return now instead of
     // looping over a very slow operation.
-    BOOST_WARN_LT(delta, 500000);
+    BOOST_WARN( delta < 500000 );
 
     // Normally, it takes less than 100ms on my dev box.
     // However, if the box is heavily loaded, some of the test runs
@@ -255,7 +264,7 @@ void test_flush_max_us_impl(uint32_t flush_us, uint32_t write_us, uint32_t test_
   delete transport;
 
   // Stop logging new fsync() calls
-  fsync_log = NULL;
+  fsync_log = nullptr;
 
   // Examine the fsync() log
   //
@@ -269,13 +278,13 @@ void test_flush_max_us_impl(uint32_t flush_us, uint32_t write_us, uint32_t test_
   // Make sure TFileTransport called fsync at least once
   BOOST_WARN_GE(calls->size(), static_cast<FsyncLog::CallList::size_type>(1));
 
-  const struct timeval* prev_time = NULL;
-  for (FsyncLog::CallList::const_iterator it = calls->begin(); it != calls->end(); ++it) {
+  const struct timeval* prev_time = nullptr;
+  for (const auto & call : *calls) {
     if (prev_time) {
-      int delta = time_diff(prev_time, &it->time);
-      BOOST_WARN_LT(delta, max_allowed_delta);
+      int delta = time_diff(prev_time, &call.time);
+      BOOST_WARN( delta < max_allowed_delta );
     }
-    prev_time = &it->time;
+    prev_time = &call.time;
   }
 }
 
@@ -309,13 +318,13 @@ BOOST_AUTO_TEST_CASE(test_noop_flush) {
   transport.write(buf, 1);
 
   struct timeval start;
-  gettimeofday(&start, NULL);
+  THRIFT_GETTIMEOFDAY(&start, nullptr);
 
   for (unsigned int n = 0; n < 10; ++n) {
     transport.flush();
 
     struct timeval now;
-    gettimeofday(&now, NULL);
+    THRIFT_GETTIMEOFDAY(&now, nullptr);
 
     // Fail if at any point we've been running for longer than half a second.
     // (With the buggy code, TFileTransport used to take 3 seconds per flush())
@@ -323,7 +332,7 @@ BOOST_AUTO_TEST_CASE(test_noop_flush) {
     // Use a fatal fail so we break out early, rather than continuing to make
     // many more slow flush() calls.
     int delta = time_diff(&start, &now);
-    BOOST_WARN_LT(delta, 2000000);
+    BOOST_WARN( delta < 2000000 );
   }
 }
 
@@ -340,11 +349,11 @@ void print_usage(FILE* f, const char* argv0) {
 
 void parse_args(int argc, char* argv[]) {
   struct option long_opts[]
-      = {{"help", false, NULL, 'h'}, {"tmp-dir", true, NULL, 't'}, {NULL, 0, NULL, 0}};
+      = {{"help", false, nullptr, 'h'}, {"tmp-dir", true, nullptr, 't'}, {nullptr, 0, nullptr, 0}};
 
   while (true) {
     optopt = 1;
-    int optchar = getopt_long(argc, argv, "ht:", long_opts, NULL);
+    int optchar = getopt_long(argc, argv, "ht:", long_opts, nullptr);
     if (optchar == -1) {
       break;
     }
@@ -367,6 +376,24 @@ void parse_args(int argc, char* argv[]) {
   }
 }
 
+#ifdef BOOST_TEST_DYN_LINK
+static int myArgc = 0;
+static char **myArgv = nullptr;
+
+bool init_unit_test_suite() {
+  boost::unit_test::framework::master_test_suite().p_name.value = "TFileTransportTest";
+
+  // Parse arguments
+  parse_args(myArgc,myArgv);
+  return true;
+}
+
+int main( int argc, char* argv[] ) {
+  myArgc = argc;
+  myArgv = argv;
+  return ::boost::unit_test::unit_test_main(&init_unit_test_suite,argc,argv);
+}
+#else
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
   boost::unit_test::framework::master_test_suite().p_name.value = "TFileTransportTest";
 
@@ -374,3 +401,4 @@ boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
   parse_args(argc, argv);
   return NULL;
 }
+#endif

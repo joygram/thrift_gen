@@ -45,7 +45,8 @@ public class TFramedTransport extends TTransport {
   /**
    * Buffer for input
    */
-  private TMemoryInputTransport readBuffer_ = new TMemoryInputTransport(new byte[0]);
+  private final TMemoryInputTransport readBuffer_ =
+    new TMemoryInputTransport(new byte[0]);
 
   public static class Factory extends TTransportFactory {
     private int maxLength_;
@@ -65,16 +66,25 @@ public class TFramedTransport extends TTransport {
   }
 
   /**
+   * Something to fill in the first four bytes of the buffer
+   * to make room for the frame size.  This allows the
+   * implementation to write once instead of twice.
+   */
+  private static final byte[] sizeFiller_ = new byte[] { 0x00, 0x00, 0x00, 0x00 };
+
+  /**
    * Constructor wraps around another transport
    */
   public TFramedTransport(TTransport transport, int maxLength) {
     transport_ = transport;
     maxLength_ = maxLength;
+    writeBuffer_.write(sizeFiller_, 0, 4);
   }
 
   public TFramedTransport(TTransport transport) {
     transport_ = transport;
     maxLength_ = TFramedTransport.DEFAULT_MAX_LENGTH;
+    writeBuffer_.write(sizeFiller_, 0, 4);
   }
 
   public void open() throws TTransportException {
@@ -90,11 +100,9 @@ public class TFramedTransport extends TTransport {
   }
 
   public int read(byte[] buf, int off, int len) throws TTransportException {
-    if (readBuffer_ != null) {
-      int got = readBuffer_.read(buf, off, len);
-      if (got > 0) {
-        return got;
-      }
+    int got = readBuffer_.read(buf, off, len);
+    if (got > 0) {
+      return got;
     }
 
     // Read another frame of data
@@ -123,6 +131,10 @@ public class TFramedTransport extends TTransport {
     readBuffer_.consumeBuffer(len);
   }
 
+  public void clear() {
+    readBuffer_.clear();
+  }
+
   private final byte[] i32buf = new byte[4];
 
   private void readFrame() throws TTransportException {
@@ -130,11 +142,14 @@ public class TFramedTransport extends TTransport {
     int size = decodeFrameSize(i32buf);
 
     if (size < 0) {
-      throw new TTransportException("Read a negative frame size (" + size + ")!");
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
     }
 
     if (size > maxLength_) {
-      throw new TTransportException("Frame size (" + size + ") larger than max length (" + maxLength_ + ")!");
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA,
+          "Frame size (" + size + ") larger than max length (" + maxLength_ + ")!");
     }
 
     byte[] buff = new byte[size];
@@ -149,12 +164,12 @@ public class TFramedTransport extends TTransport {
   @Override
   public void flush() throws TTransportException {
     byte[] buf = writeBuffer_.get();
-    int len = writeBuffer_.len();
+    int len = writeBuffer_.len() - 4;       // account for the prepended frame size
     writeBuffer_.reset();
+    writeBuffer_.write(sizeFiller_, 0, 4);  // make room for the next frame's size data
 
-    encodeFrameSize(len, i32buf);
-    transport_.write(i32buf, 0, 4);
-    transport_.write(buf, 0, len);
+    encodeFrameSize(len, buf);              // this is the frame length without the filler
+    transport_.write(buf, 0, len + 4);      // we have to write the frame size and frame data
     transport_.flush();
   }
 
@@ -166,7 +181,7 @@ public class TFramedTransport extends TTransport {
   }
 
   public static final int decodeFrameSize(final byte[] buf) {
-    return 
+    return
       ((buf[0] & 0xff) << 24) |
       ((buf[1] & 0xff) << 16) |
       ((buf[2] & 0xff) <<  8) |

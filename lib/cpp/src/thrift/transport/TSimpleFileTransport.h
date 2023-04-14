@@ -32,8 +32,8 @@ namespace transport {
  * Writeable files are opened with O_CREAT and O_APPEND
  */
 class TSimpleFileTransport : public TFDTransport {
- public:
-  TSimpleFileTransport(const std::string& path, bool read =  true, bool write = false, bool append = false);
+public:
+  TSimpleFileTransport(const std::string& path, bool read = true, bool write = false);
 };
 }
 }

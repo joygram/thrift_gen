@@ -23,7 +23,9 @@
 #include <string.h>
 
 #include <thrift/c_glib/thrift.h>
+#include <thrift/c_glib/processor/thrift_multiplexed_processor.h>
 #include <thrift/c_glib/protocol/thrift_binary_protocol_factory.h>
+#include <thrift/c_glib/protocol/thrift_compact_protocol_factory.h>
 #include <thrift/c_glib/server/thrift_server.h>
 #include <thrift/c_glib/server/thrift_simple_server.h>
 #include <thrift/c_glib/transport/thrift_buffered_transport.h>
@@ -36,8 +38,10 @@
 #include <thrift/c_glib/transport/thrift_transport_factory.h>
 
 #include "../gen-c_glib/t_test_thrift_test.h"
+#include "../gen-c_glib/t_test_second_service.h"
 
 #include "thrift_test_handler.h"
+#include "thrift_second_service_handler.h"
 
 /* Our server object, declared globally so it is accessible within the SIGINT
    signal handler */
@@ -68,6 +72,8 @@ main (int argc, char **argv)
   static gchar *server_type_option = NULL;
   static gchar *transport_option = NULL;
   static gchar *protocol_option = NULL;
+  static gint   string_limit = 0;
+  static gint   container_limit = 0;
 
   static
     GOptionEntry option_entries[] = {
@@ -78,7 +84,11 @@ main (int argc, char **argv)
     { "transport",       0, 0, G_OPTION_ARG_STRING,   &transport_option,
       "Transport: buffered, framed (=buffered)", NULL },
     { "protocol",        0, 0, G_OPTION_ARG_STRING,   &protocol_option,
-      "Protocol: binary (=binary)", NULL },
+      "Protocol: binary, compact (=binary)", NULL },
+    { "string-limit",    0, 0, G_OPTION_ARG_INT,      &string_limit,
+      "Max string length (=none)", NULL },
+    { "container-limit", 0, 0, G_OPTION_ARG_INT,      &container_limit,
+      "Max container length (=none)", NULL },
     { NULL }
   };
 
@@ -89,7 +99,10 @@ main (int argc, char **argv)
   GType  protocol_factory_type  = THRIFT_TYPE_BINARY_PROTOCOL_FACTORY;
 
   TTestThriftTestHandler *handler;
+  TTestThriftTestHandler *handler_second_service = NULL;
   ThriftProcessor        *processor;
+  ThriftProcessor        *processor_test = NULL;
+  ThriftProcessor        *processor_second_service = NULL;
   ThriftServerTransport  *server_transport;
   ThriftTransportFactory *transport_factory;
   ThriftProtocolFactory  *protocol_factory;
@@ -126,10 +139,22 @@ main (int argc, char **argv)
     options_valid = FALSE;
   }
 
-  if (protocol_option != NULL &&
-      strncmp (protocol_option, "binary", 7) != 0) {
-    fprintf (stderr, "Unknown protocol type %s\n", protocol_option);
-    options_valid = FALSE;
+  if (protocol_option != NULL) {
+    if (strncmp (protocol_option, "compact", 8) == 0) {
+      protocol_factory_type = THRIFT_TYPE_COMPACT_PROTOCOL_FACTORY;
+      protocol_name = "compact";
+    }
+    else if (strncmp (protocol_option, "multi", 6) == 0) {
+	protocol_name = "binary:multi";
+    }
+    else if (strncmp (protocol_option, "multic", 7) == 0) {
+	protocol_factory_type = THRIFT_TYPE_COMPACT_PROTOCOL_FACTORY;
+	protocol_name = "compact:multic";
+    }
+    else if (strncmp (protocol_option, "binary", 7) != 0) {
+      fprintf (stderr, "Unknown protocol type %s\n", protocol_option);
+      options_valid = FALSE;
+    }
   }
 
   if (transport_option != NULL) {
@@ -149,16 +174,65 @@ main (int argc, char **argv)
   /* Establish all our connection objects */
   handler           = g_object_new (TYPE_THRIFT_TEST_HANDLER,
                                     NULL);
-  processor         = g_object_new (T_TEST_TYPE_THRIFT_TEST_PROCESSOR,
-                                    "handler", handler,
-                                    NULL);
+
+
+
+  if(strstr(protocol_name, ":multi")){
+      /* When a multiplexed processor is involved the handler is not
+         registered as usual. We create the processor and the real
+         processor is registered. Multiple processors can be registered
+         at once. This is why we don't have a constructor property */
+      processor = g_object_new (THRIFT_TYPE_MULTIPLEXED_PROCESSOR,
+					 NULL);
+
+      handler_second_service = g_object_new (TYPE_SECOND_SERVICE_HANDLER,
+     	                                    NULL);
+
+      processor_test = g_object_new (T_TEST_TYPE_THRIFT_TEST_PROCESSOR,
+				    "handler", handler,
+				    NULL);
+      processor_second_service =   g_object_new (T_TEST_TYPE_SECOND_SERVICE_PROCESSOR,
+				    "handler", handler_second_service,
+				    NULL);
+
+      /* We register a test processor with Multiplexed name ThriftTest */
+      if(!thrift_multiplexed_processor_register_processor(processor,
+						      "ThriftTest", processor_test,
+						      &error)){
+	    g_message ("thrift_server_serve: %s",
+	               error != NULL ? error->message : "(null)");
+	    g_clear_error (&error);
+      }
+      /* We register a second test processor with Multiplexed name SecondService
+       * we are responsible of freeing the processor when it's not used anymore */
+      if(!thrift_multiplexed_processor_register_processor(processor,
+						      "SecondService", processor_second_service,
+						      &error)){
+	    g_message ("thrift_server_serve: %s",
+	               error != NULL ? error->message : "(null)");
+	    g_clear_error (&error);
+      }
+
+  }else{
+      processor = g_object_new (T_TEST_TYPE_THRIFT_TEST_PROCESSOR,
+                                        "handler", handler,
+                                        NULL);
+  }
   server_transport  = g_object_new (THRIFT_TYPE_SERVER_SOCKET,
                                     "port", port,
                                     NULL);
   transport_factory = g_object_new (transport_factory_type,
                                     NULL);
-  protocol_factory  = g_object_new (protocol_factory_type,
-                                    NULL);
+
+  if (strstr (protocol_name, "compact") != NULL) {
+    protocol_factory  = g_object_new (protocol_factory_type,
+                                      "string_limit", string_limit,
+                                      "container_limit", container_limit,
+                                      NULL);
+  } else {
+    protocol_factory  = g_object_new (protocol_factory_type,
+                                      NULL);
+  }
 
   server = g_object_new (THRIFT_TYPE_SIMPLE_SERVER,
                          "processor",                processor,
@@ -202,6 +276,15 @@ main (int argc, char **argv)
   g_object_unref (server_transport);
   g_object_unref (processor);
   g_object_unref (handler);
+  if(handler_second_service){
+      g_object_unref (handler_second_service);
+  }
+  if(processor_test){
+      g_object_unref (processor_test);
+  }
+  if(processor_second_service){
+      g_object_unref (processor_second_service);
+  }
 
   return 0;
 }

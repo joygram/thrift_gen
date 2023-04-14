@@ -17,26 +17,10 @@
 # under the License.
 #
 
-from thrift.protocol.TProtocol import TProtocolBase
-from types import *
 
-class TProtocolDecorator():
-  def __init__(self, protocol):
-    TProtocolBase(protocol)
-    self.protocol = protocol
-
-  def __getattr__(self, name):
-    if hasattr(self.protocol, name):
-      member = getattr(self.protocol, name)
-      if type(member) in [MethodType, UnboundMethodType, FunctionType, LambdaType, BuiltinFunctionType, BuiltinMethodType]:
-        return lambda *args, **kwargs: self._wrap(member, args, kwargs)
-      else:
-        return member
-    raise AttributeError(name)
-
-  def _wrap(self, func, args, kwargs):
-    if type(func) == MethodType:
-      result = func(*args, **kwargs)
-    else:
-      result = func(self.protocol, *args, **kwargs)
-    return result
+class TProtocolDecorator(object):
+    def __new__(cls, protocol, *args, **kwargs):
+        decorated_cls = type(''.join(['Decorated', protocol.__class__.__name__]),
+                             (cls, protocol.__class__),
+                             protocol.__dict__)
+        return object.__new__(decorated_cls)

@@ -19,7 +19,7 @@
 
 package org.apache.thrift.transport;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A superclass for SASL client/server thrift transports. A subclass need only
- * implement the <code>open</open> method.
+ * implement the <code>open</code> method.
  */
 abstract class TSaslTransport extends TTransport {
 
@@ -158,9 +158,9 @@ abstract class TSaslTransport extends TTransport {
     messageHeader[0] = status.getValue();
     EncodingUtils.encodeBigEndian(payload.length, messageHeader, STATUS_BYTES);
 
-    if (LOGGER.isDebugEnabled())
-      LOGGER.debug(getRole() + ": Writing message with status {} and payload length {}",
-                   status, payload.length);
+    LOGGER.debug("{}: Writing message with status {} and payload length {}",
+        getRole(), status, payload.length);
+
     underlyingTransport.write(messageHeader);
     underlyingTransport.write(payload);
     underlyingTransport.flush();
@@ -194,17 +194,11 @@ abstract class TSaslTransport extends TTransport {
     underlyingTransport.readAll(payload, 0, payload.length);
 
     if (status == NegotiationStatus.BAD || status == NegotiationStatus.ERROR) {
-      try {
-        String remoteMessage = new String(payload, "UTF-8");
-        throw new TTransportException("Peer indicated failure: " + remoteMessage);
-      } catch (UnsupportedEncodingException e) {
-        throw new TTransportException(e);
-      }
+      String remoteMessage = new String(payload, StandardCharsets.UTF_8);
+      throw new TTransportException("Peer indicated failure: " + remoteMessage);
     }
-
-    if (LOGGER.isDebugEnabled())
-      LOGGER.debug(getRole() + ": Received message with status {} and payload length {}",
-                   status, payload.length);
+    LOGGER.debug("{}: Received message with status {} and payload length {}",
+        getRole(), status, payload.length);
     return new SaslResponse(status, payload);
   }
 
@@ -224,7 +218,7 @@ abstract class TSaslTransport extends TTransport {
    */
   protected TTransportException sendAndThrowMessage(NegotiationStatus status, String message) throws TTransportException {
     try {
-      sendSaslMessage(status, message.getBytes());
+      sendSaslMessage(status, message.getBytes(StandardCharsets.UTF_8));
     } catch (Exception e) {
       LOGGER.warn("Could not send failure response", e);
       message += "\nAlso, could not send response: " + e.toString();
@@ -287,15 +281,13 @@ abstract class TSaslTransport extends TTransport {
         if (message.status == NegotiationStatus.COMPLETE &&
             getRole() == SaslRole.CLIENT) {
           LOGGER.debug("{}: All done!", getRole());
-          break;
+          continue;
         }
 
         sendSaslMessage(sasl.isComplete() ? NegotiationStatus.COMPLETE : NegotiationStatus.OK,
                         challenge);
       }
       LOGGER.debug("{}: Main negotiation loop complete", getRole());
-
-      assert sasl.isComplete();
 
       // If we're the client, and we're complete, but the server isn't
       // complete yet, we need to wait for its response. This will occur
@@ -325,7 +317,7 @@ abstract class TSaslTransport extends TTransport {
       if (!readSaslHeader && e.getType() == TTransportException.END_OF_FILE) {
         underlyingTransport.close();
         LOGGER.debug("No data or no sasl data in the stream");
-        throw new TSaslTransportException("No data or no sasl data in the stream");
+        throw new TSaslTransportException("No data or no sasl data in the stream during negotiation", e);
       }
       throw e;
     }

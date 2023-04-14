@@ -19,12 +19,14 @@
 
 EXTRA_DIST = \
 	coding_standards.md \
+	CMakeLists.txt \
 	LICENSE \
 	README.md \
 	Setup.lhs \
 	TODO \
-	Thrift.cabal \
-	src
+	thrift.cabal \
+	src \
+	test
 
 all-local:
 	$(CABAL) update
@@ -42,3 +44,7 @@ maintainer-clean-local:
 
 check-local:
 	$(CABAL) check
+	$(CABAL) install --only-dependencies --enable-tests
+	$(CABAL) configure --enable-tests
+	$(CABAL) build
+	$(CABAL) test

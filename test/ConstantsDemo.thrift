@@ -18,6 +18,7 @@
  */
 
 namespace cpp yozone
+namespace erl consts_
 
 struct thing {
   1: i32 hello,
@@ -46,6 +47,9 @@ const i32 GEN_ME = -3523553
 const double GEn_DUB = 325.532
 const double GEn_DU = 085.2355
 const string GEN_STRING = "asldkjasfd"
+
+const double e10 = 1e10   // fails with 0.9.3 and earlier
+const double e11 = -1e10  
 
 const map<i32,i32> GEN_MAP = { 35532 : 233, 43523 : 853 }
 const list<i32> GEN_LIST = [ 235235, 23598352, 3253523 ]

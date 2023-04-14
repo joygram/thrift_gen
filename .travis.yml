@@ -19,170 +19,140 @@
 
 # build Apache Thrift on Travis CI - https://travis-ci.org/
 
-language: cpp
+#
+# Docker Integration
+# see: build/docker/README.md
+# 
 
 sudo: required
+dist: trusty
+language: cpp
 
-cache:
- - apt
- - npm
- - maven
+services:
+  - docker
 
-compiler:
-  - clang
-  - gcc
+install:
+  - if [[ `uname` == "Linux" ]]; then build/docker/refresh.sh; fi
 
-before_install:
-  - sh build/travis/installCXXDependencies.sh
-  - if [ "$ALL_DEPS" != "no" ] ; then sh build/travis/installDependencies.sh 1> /dev/null ; fi
-  - if [ "$ALL_DEPS" != "no" ] ; then export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.20/bin:$PATH ; fi
-  - if [ "$ALL_DEPS" != "no" ] ; then cabal update ; fi
-  # Disabling any cabal concurrent jobs to workaround GHC crashes due to out of memory.
-  # We can safely remove this to speed up cabal install, once Travis infrastructure is upgraded.
-  - if [ "$ALL_DEPS" != "no" ] ; then sed -i 's/^\s*jobs\s*:\s*\$ncpus\s*$/jobs:1/g' $HOME/.cabal/config && cat $HOME/.cabal/config | grep jobs ; fi
-
-
-script:
-  - if [ "x$CMAKE_CONFIG" != "xnone" ] ; then mkdir cmake_build && cd cmake_build && cmake -GNinja -DQT_MOC_EXECUTABLE="moq-qt5" $CMAKE_CONFIG $TRAVIS_BUILD_DIR ; fi
-  - if [ "x$CMAKE_CONFIG" != "xnone" ] ; then ninja ; fi
-  - if [ "x$CMAKE_CONFIG" != "xnone" ] ; then cpack ; cd $TRAVIS_BUILD_DIR ; fi
-  - if [ "x$CONFIG" != "xnone" ] ; then sh bootstrap.sh ; fi
-  - if [ "x$CONFIG" != "xnone" ] ; then sh configure $CONFIG ; fi
-  - if [ "x$CONFIG" != "xnone" ] ; then make $MAKE_TARGET -j2 ; fi
-
-after_failure:
-  - if [ "x$ERROR_LOG" != "xnone" ] ; then cat $ERROR_LOG ; fi
+stages:
+  - docker    # docker images
+  - thrift    # thrift build jobs
 
 env:
   global:
-    - TEST_NAME=""
-    - CMAKE_CONFIG="none"
-    - CONFIG="none"
-    - MAKE_TARGET="check"
-    - ALL_DEPS="no"
-    - GHCVER=7.8.3
-    - ERROR_LOG="none"
+    - SCRIPT="cmake.sh"
+    - BUILD_ARG=""
+    - BUILD_ENV="-e CC=gcc -e CXX=g++ -e THRIFT_CROSSTEST_CONCURRENCY=4"
+    - DISTRO=ubuntu-bionic
+    - BUILD_LIBS="CPP C_GLIB HASKELL JAVA PYTHON TESTING TUTORIALS"  # only meaningful for CMake builds
+    - TRAVIS_BUILD_STAGE=test
+    # DOCKER_REPO (this works for all builds as a source for docker images - you can override for fork builds in your Travis settings)
+    - DOCKER_REPO="thrift/thrift-build"
+    # DOCKER_USER (provide in your Travis settings if you want to build and update docker images once, instead of on every job)
+    # DOCKER_PASS (same)
 
-  matrix:
-    # Put it here because it's most time consuming
-    - TEST_NAME="make cross (automake)"
-      THRIFT_CROSSTEST_CONCURRENCY=6
-      CONFIG="--enable-tutorial=no --without-erlang --without-lua --without-haxe --without-d"
-      ALL_DEPS="yes"
-      MAKE_TARGET="cross"
-      ERROR_LOG="test/log/unexpected_failures.log"
-
-    # CMake builds
-    - TEST_NAME="compiler (CMake + CPack)"
-      CMAKE_CONFIG="-DBUILD_COMPILER=ON -DBUILD_LIBRARIES=OFF -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF"
-    - TEST_NAME="all (CMake + CPack)"
-      CMAKE_CONFIG=""
-      ALL_DEPS="yes"
-    - TEST_NAME="C++/boost-threads (CMake + CPack)"
-      CMAKE_CONFIG="-DWITH_C_GLIB=OFF -DWITH_JAVA=OFF -DWITH_BOOSTTHREADS=ON"
-    - TEST_NAME="C++/std-threads (CMake + CPack)"
-      CMAKE_CONFIG="-DCMAKE_CXX_FLAGS=-std=c++0x -DWITH_C_GLIB=OFF -DWITH_JAVA=OFF -DWITH_STDTHREADS=ON"
-    - TEST_NAME="compiler (mingw32-gcc, CMake + CPack)"
-      CMAKE_CONFIG="-DCMAKE_TOOLCHAIN_FILE=../build/cmake/mingw32-toolchain.cmake -DBUILD_COMPILER=ON -DBUILD_LIBRARIES=OFF -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF"
-
-    # Autotool builds
-    # TODO: Remove them as migration is made
-    - TEST_NAME="compiler (automake)"
-      CONFIG="--disable-libs"
-    - TEST_NAME="all (automake)"
-      CONFIG="--without-erlang --without-python --without-go --without-lua"
-      ALL_DEPS="yes"
-    - TEST_NAME="C & C++ & Haskell (automake)"
-      CONFIG="--without-csharp --without-java --without-erlang --without-nodejs --without-lua --without-python --without-perl --without-php --without-php-extension --without-ruby --without-go --without-d"
-      ALL_DEPS="yes"
-    - TEST_NAME="Small Set (automake)"
-      CONFIG="--without-erlang --without-haskell --without-python --without-go --without-lua --without-d --without-ruby --without-nodejs --without-java"
-      ALL_DEPS="yes"
-    - TEST_NAME="dist (automake)"
-      CONFIG=""
-      ALL_DEPS="yes"
-      MAKE_TARGET="dist"
-
-matrix:
-  allow_failures:
-    # gcc fails on travis seemingly due to out of memory
-    - compiler: gcc
-
-  exclude:
-    # This one takes very long
-    - compiler: gcc
-      env: TEST_NAME="make cross (automake)" CONFIG="--without-python" ALL_DEPS="yes" MAKE_TARGET="cross"
-
-    # Does not use native compiler, no need to do it twice
-    - compiler: gcc
-      env: TEST_NAME="compiler (mingw32-gcc, CMake + CPack)" CMAKE_CONFIG="-DCMAKE_TOOLCHAIN_FILE=../build/cmake/mingw32-toolchain.cmake -DBUILD_COMPILER=ON -DBUILD_LIBRARIES=OFF -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF"
-    - compiler: gcc
-      env: TEST_NAME="dist (automake)" CONFIG="" ALL_DEPS="yes" MAKE_TARGET="dist"
-
+jobs:
   include:
-    - env:
-        - TEST_NAME="Debian Packages"
-      compiler: clang
-      before_install:
-       - sh build/travis/installCXXDependencies.sh;
-       - sh build/travis/installDependencies.sh 1> /dev/null;
-       - sudo apt-get install build-essential mono-gmcs mono-devel libmono-system-web2.0-cil erlang-base ruby1.8-dev python-all python-all-dev python-all-dbg php5 php5-dev
-      script:
-       - dpkg-buildpackage -tc -us -uc
-       - ls -al ..
+    # ========================= stage: docker =========================
+    - stage: docker
+      script: true
+      env:
+        - JOB="Docker Build ubuntu-xenial 16.04 LTS"
+        - DISTRO=ubuntu-xenial
+        - TRAVIS_BUILD_STAGE=docker
+    - script: true
+      env:
+        - JOB="Docker Build ubuntu-bionic 18.04 LTS"
+        - DISTRO=ubuntu-bionic
+        - TRAVIS_BUILD_STAGE=docker
 
+    # ========================= stage: thrift =======================
+    # ------------------------- phase: cross ------------------------
+    - stage: thrift
+      script: build/docker/run.sh
+      env:
+        - JOB="Cross Language Tests (Binary Protocol)"
+        - SCRIPT="cross-test.sh"
+        - BUILD_ARG="-'(binary)'"
 
+    - stage: thrift
+      script: build/docker/run.sh
+      env:
+        - JOB="Cross Language Tests (Header, JSON Protocols)"
+        - SCRIPT="cross-test.sh"
+        - BUILD_ARG="-'(header|json)'"
+
+    - stage: thrift
+      script: build/docker/run.sh
+      env:
+        - JOB="Cross Language Tests (Compact and Multiplexed Protocols)"
+        - SCRIPT="cross-test.sh"
+        - BUILD_ARG="-'(compact|multiplexed)'"
+
+    # ------------------------- phase: sca --------------------------
     # QA jobs for code analytics and metrics
+    - stage: thrift
+      script: build/docker/run.sh
+      env:
+        - JOB="Static Code Analysis"
+        - SCRIPT="sca.sh"
 
-    # static code analysis with cppcheck (we can add --enable=all later)
-    - env:    TEST_NAME="cppcheck (compiler) error"
-      script: cppcheck --force --quiet --inline-suppr --error-exitcode=1 -j2 compiler/cpp/src
-      before_install: sudo apt-get install cppcheck
-    - env:    TEST_NAME="cppcheck (cpp) error"
-      script: cppcheck --force --quiet --inline-suppr --error-exitcode=1 -j2 lib/cpp/src lib/cpp/test test/cpp tutorial/cpp
-      before_install: sudo apt-get install cppcheck
-    - env:    TEST_NAME="cppcheck (c_glib) error"
-      script: cppcheck --force --quiet --inline-suppr --error-exitcode=1 -j2 lib/c_glib/src lib/c_glib/test test/c_glib/src tutorial/c_glib
-      before_install: sudo apt-get install cppcheck
-    # add --error-exitcode=1 as soon as everything is fixed
-    - env:    TEST_NAME="cppcheck (compiler) all"
-      script: cppcheck --force --quiet --inline-suppr --enable=all -j2 compiler/cpp/src
-      before_install: sudo apt-get install cppcheck
-    - env:    TEST_NAME="cppcheck (cpp) all"
-      script: cppcheck --force --quiet --inline-suppr --enable=all -j2 lib/cpp/src lib/cpp/test test/cpp tutorial/cpp
-      before_install: sudo apt-get install cppcheck
-    - env:    TEST_NAME="cppcheck (c_glib) all"
-      script: cppcheck --force --quiet --inline-suppr --enable=all -j2 lib/c_glib/src lib/c_glib/test test/c_glib/src tutorial/c_glib
-      before_install: sudo apt-get install cppcheck
+    # C and C++ undefined behavior.
+    # A binary crashes if undefined behavior occurs and produces a stack trace.
+    # python is disabled, see: THRIFT-4360
+    - script: build/docker/run.sh
+      env:
+        - JOB="UBSan"
+        - SCRIPT="ubsan.sh"
+        - BUILD_ARG="--without-python --without-py3"
 
-    # TODO use findbugs for Java
-    # TODO use fxcop for C#
+    # ------------------------- phase: autotools --------------------
+    # TODO: Remove them once migrated to CMake
+    - script: build/docker/run.sh
+      env:
+        - JOB="Autotools (Ubuntu Bionic)"
+        - SCRIPT="autotools.sh"
 
-    # TODO do style checks
+    - script: build/docker/run.sh
+      env:
+        - JOB="Autotools (Ubuntu Xenial)"
+        - DISTRO=ubuntu-xenial
+        - SCRIPT="autotools.sh"
 
-    # search for TODO within source tree
-    - env:    TEST_NAME="TODO"
-      before_install:
-      script: grep -r TODO *
-    # search for FIXME within source tree
-    - env:    TEST_NAME="FIXME"
-      before_install:
-      script: grep -r FIXME *
-    # search for HACK within source tree
-    - env:    TEST_NAME="HACK"
-      before_install:
-      script: grep -r HACK *
-    # some statistics about the code base
-    - env:    TEST_NAME="sloccount"
-      before_install:
-      script: sloccount .
-      before_install: sudo apt-get install sloccount
-    # some info about the build machine
-    - env:    TEST_NAME="info"
-      before_install:
-      script:
-       - dpkg -l
-       - uname -a
+    # ------------------------- phase: cmake ------------------------
+    - script: build/docker/run.sh
+      env:
+        - JOB="CMake"
+        - BUILD_ARG="-DCMAKE_BUILD_TYPE=Debug"
 
-# TODO make it perfect ;-r
-#
+    - script: build/docker/run.sh
+      env:
+        - JOB="CMake"
+        - BUILD_ARG="-DCMAKE_BUILD_TYPE=Release"
+
+    # ------------------------- phase: dist -------------------------
+    - script: build/docker/run.sh
+      env:
+        - JOB="make dist"
+        - SCRIPT="make-dist.sh"
+
+    - script: build/docker/run.sh
+      env:
+        - JOB="Debian Packages"
+        - SCRIPT="dpkg.sh"
+
+    # ------------------------- phase: coverity ---------------------
+    # We build the coverity scan build once monthly using a travis cron job
+    - if: (env(COVERITY_SCAN_NOTIFICATION_EMAIL) IS present) AND (branch IN (master)) AND (type IN (cron))
+      script: build/docker/run.sh
+      env:
+        - JOB="Coverity Scan"
+        - SCRIPT="covscan.sh"
+     
+
+  ### ------------------------- phase: osx --------------------------
+  # disabled due to the time delays it imposes on build jobs
+  # - os: osx
+  #   osx_image: xcode9
+  #   script: build/docker/scripts/autotools.sh
+

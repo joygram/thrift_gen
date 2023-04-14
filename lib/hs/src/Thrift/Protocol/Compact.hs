@@ -25,10 +25,11 @@
 module Thrift.Protocol.Compact
     ( module Thrift.Protocol
     , CompactProtocol(..)
+    , parseVarint
+    , buildVarint
     ) where
 
 import Control.Applicative
-import Control.Exception ( throw )
 import Control.Monad
 import Data.Attoparsec.ByteString as P
 import Data.Attoparsec.ByteString.Lazy as LP
@@ -40,7 +41,7 @@ import Data.Monoid
 import Data.Word
 import Data.Text.Lazy.Encoding ( decodeUtf8, encodeUtf8 )
 
-import Thrift.Protocol hiding (versionMask)
+import Thrift.Protocol
 import Thrift.Transport
 import Thrift.Types
 
@@ -55,7 +56,7 @@ import qualified Data.Text.Lazy as LT
 data CompactProtocol a = CompactProtocol a
                          -- ^ Constuct a 'CompactProtocol' with a 'Transport'
 
-protocolID, version, typeMask :: Int8
+protocolID, version, versionMask, typeMask, typeBits :: Word8
 protocolID  = 0x82 -- 1000 0010
 version     = 0x01
 versionMask = 0x1f -- 0001 1111
@@ -64,37 +65,46 @@ typeBits    = 0x07 -- 0000 0111
 typeShiftAmount :: Int
 typeShiftAmount = 5
 
+getTransport :: Transport t => CompactProtocol t -> t
+getTransport (CompactProtocol t) = t
 
-instance Protocol CompactProtocol where
-    getTransport (CompactProtocol t) = t
+instance Transport t => Protocol (CompactProtocol t) where
+    readByte p = tReadAll (getTransport p) 1
+    writeMessage p (n, t, s) f = do
+      tWrite (getTransport p) messageBegin
+      f
+      tFlush $ getTransport p
+      where
+        messageBegin = toLazyByteString $
+          B.word8 protocolID <>
+          B.word8 ((version .&. versionMask) .|.
+                  (((fromIntegral $ fromEnum t) `shiftL`
+                  typeShiftAmount) .&. typeMask)) <>
+          buildVarint (i32ToZigZag s) <>
+          buildCompactValue (TString $ encodeUtf8 n)
 
-    writeMessageBegin p (n, t, s) = tWrite (getTransport p) $ toLazyByteString $
-      B.int8 protocolID <>
-      B.int8 ((version .&. versionMask) .|.
-              (((fromIntegral $ fromEnum t) `shiftL`
-                typeShiftAmount) .&. typeMask)) <>
-      buildVarint (i32ToZigZag s) <>
-      buildCompactValue (TString $ encodeUtf8 n)
-    
-    readMessageBegin p = runParser p $ do
-      pid <- fromIntegral <$> P.anyWord8
-      when (pid /= protocolID) $ error "Bad Protocol ID"
-      w <- fromIntegral <$> P.anyWord8
-      let ver = w .&. versionMask 
-      when (ver /= version) $ error "Bad Protocol version"
-      let typ = (w `shiftR` typeShiftAmount) .&. typeBits
-      seqId <- parseVarint zigZagToI32
-      TString name <- parseCompactValue T_STRING
-      return (decodeUtf8 name, toEnum $ fromIntegral $ typ, seqId)
+    readMessage p f = readMessageBegin >>= f
+      where
+        readMessageBegin = runParser p $ do
+          pid <- fromIntegral <$> P.anyWord8
+          when (pid /= protocolID) $ error "Bad Protocol ID"
+          w <- fromIntegral <$> P.anyWord8
+          let ver = w .&. versionMask
+          when (ver /= version) $ error "Bad Protocol version"
+          let typ = (w `shiftR` typeShiftAmount) .&. typeBits
+          seqId <- parseVarint zigZagToI32
+          TString name <- parseCompactValue T_STRING
+          return (decodeUtf8 name, toEnum $ fromIntegral $ typ, seqId)
 
+    writeVal p = tWrite (getTransport p) . toLazyByteString . buildCompactValue
+    readVal p ty = runParser p $ parseCompactValue ty
+
+instance Transport t => StatelessProtocol (CompactProtocol t) where
     serializeVal _ = toLazyByteString . buildCompactValue
     deserializeVal _ ty bs =
       case LP.eitherResult $ LP.parse (parseCompactValue ty) bs of
         Left s -> error s
         Right val -> val
-
-    readVal p ty = runParser p $ parseCompactValue ty
-
 
 -- | Writing Functions
 buildCompactValue :: ThriftVal -> Builder
@@ -120,10 +130,11 @@ buildCompactValue (TByte b) = int8 b
 buildCompactValue (TI16 i) = buildVarint $ i16ToZigZag i
 buildCompactValue (TI32 i) = buildVarint $ i32ToZigZag i
 buildCompactValue (TI64 i) = buildVarint $ i64ToZigZag i
-buildCompactValue (TDouble d) = doubleBE d
+buildCompactValue (TDouble d) = doubleLE d
 buildCompactValue (TString s) = buildVarint len <> lazyByteString s
   where
     len = fromIntegral (LBS.length s) :: Word32
+buildCompactValue (TBinary s) = buildCompactValue (TString s)
 
 buildCompactStruct :: Map.HashMap Int16 (LT.Text, ThriftVal) -> Builder
 buildCompactStruct = flip (loop 0) mempty . Map.toList
@@ -146,7 +157,7 @@ buildCompactList = foldr (mappend . buildCompactValue) mempty
 
 -- | Reading Functions
 parseCompactValue :: ThriftType -> Parser ThriftVal
-parseCompactValue (T_STRUCT _) = TStruct <$> parseCompactStruct
+parseCompactValue (T_STRUCT tmap) = TStruct <$> parseCompactStruct tmap
 parseCompactValue (T_MAP kt' vt') = do
   n <- parseVarint id
   if n == 0
@@ -163,14 +174,17 @@ parseCompactValue T_BYTE = TByte . fromIntegral <$> P.anyWord8
 parseCompactValue T_I16 = TI16 <$> parseVarint zigZagToI16
 parseCompactValue T_I32 = TI32 <$> parseVarint zigZagToI32
 parseCompactValue T_I64 = TI64 <$> parseVarint zigZagToI64
-parseCompactValue T_DOUBLE = TDouble . bsToDouble <$> P.take 8
-parseCompactValue T_STRING = do
-  len :: Word32 <- parseVarint id
-  TString . LBS.fromStrict <$> P.take (fromIntegral len)
+parseCompactValue T_DOUBLE = TDouble . bsToDoubleLE <$> P.take 8
+parseCompactValue T_STRING = parseCompactString TString
+parseCompactValue T_BINARY = parseCompactString TBinary
 parseCompactValue ty = error $ "Cannot read value of type " ++ show ty
 
-parseCompactStruct :: Parser (Map.HashMap Int16 (LT.Text, ThriftVal))
-parseCompactStruct = Map.fromList <$> parseFields 0
+parseCompactString ty = do
+  len :: Word32 <- parseVarint id
+  ty . LBS.fromStrict <$> P.take (fromIntegral len)
+
+parseCompactStruct :: TypeMap -> Parser (Map.HashMap Int16 (LT.Text, ThriftVal))
+parseCompactStruct tmap = Map.fromList <$> parseFields 0
   where
     parseFields :: Int16 -> Parser [(Int16, (LT.Text, ThriftVal))]
     parseFields lastId = do
@@ -185,7 +199,9 @@ parseCompactStruct = Map.fromList <$> parseFields 0
                  else parseVarint zigZagToI16
           val <- if ty == T_BOOL
                  then return (TBool $ (w .&. 0x0F) == 0x01)
-                 else parseCompactValue ty
+                 else case (ty, Map.lookup fid tmap) of
+                        (T_STRING, Just (_, T_BINARY)) -> parseCompactValue T_BINARY
+                        _ -> parseCompactValue ty
           ((fid, (LT.empty, val)) : ) <$> parseFields fid
 
 parseCompactMap :: ThriftType -> ThriftType -> Int32 ->
@@ -255,6 +271,7 @@ fromTType ty = case ty of
   T_I64 -> 0x06
   T_DOUBLE -> 0x07
   T_STRING -> 0x08
+  T_BINARY -> 0x08
   T_LIST{} -> 0x09
   T_SET{} -> 0x0A
   T_MAP{} -> 0x0B
@@ -271,11 +288,12 @@ typeOf v = case v of
   TI64 _ -> 0x06
   TDouble _ -> 0x07
   TString _ -> 0x08
+  TBinary _ -> 0x08
   TList{} -> 0x09
   TSet{} -> 0x0A
   TMap{} -> 0x0B
   TStruct{} -> 0x0C
-  
+
 typeFrom :: Word8 -> ThriftType
 typeFrom w = case w of
   0x01 -> T_BOOL

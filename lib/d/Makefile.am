@@ -141,9 +141,13 @@ all-local: $(all_targets)
 install-exec-local:
 	$(INSTALL_PROGRAM) $(all_targets) $(DESTDIR)$(libdir)
 
-
 clean-local:
-	$(RM) -rf docs $(D_LIB_NAME) $(D_EVENT_LIB_NAME) $(D_SSL_LIB_NAME) unittest
+	$(RM) -r docs
+	$(RM) $(D_LIB_NAME)
+	$(RM) $(D_EVENT_LIB_NAME)
+	$(RM) $(D_SSL_LIB_NAME)
+	$(RM) -r test/gen-d
+	$(RM) -r unittest
 
 
 #
@@ -177,7 +181,7 @@ unittest/.directory:
 	touch $@
 
 unittest/debug/%: src/%.d $(all_targets) unittest/emptymain.d
-	$(DMD) -gc -of$(subst /,$(DMD_OF_DIRSEP),$@) $(d_test_flags) $^
+	$(DMD) -g -of$(subst /,$(DMD_OF_DIRSEP),$@) $(d_test_flags) $^
 
 unittest/release/%: src/%.d $(all_targets) unittest/emptymain.d
 	$(DMD) -O -release -of$(subst /,$(DMD_OF_DIRSEP),$@) $(d_test_flags) $^
@@ -185,6 +189,8 @@ unittest/release/%: src/%.d $(all_targets) unittest/emptymain.d
 TESTS = $(addprefix unittest/debug/, $(d_test_modules)) \
 	$(addprefix unittest/release/, $(d_test_modules))
 
+precross: all-local
+	$(MAKE) -C test precross
 
 EXTRA_DIST = \
 	src \
